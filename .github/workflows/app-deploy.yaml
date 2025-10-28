@@ -58,8 +58,7 @@ jobs:
       - name: Set Environment Variables
         run: |
           echo "ENVIRONMENT=${{ matrix.env }}" >> $GITHUB_ENV
-          # Path relative to working-directory (terraform/)
-          echo "TFVARS_FILE=${{ matrix.env }}.tfvars" >> $GITHUB_ENV
+          echo "TFVARS_FILE=${{ env.TF_DIR }}/${{ matrix.env }}.tfvars" >> $GITHUB_ENV
 
       - name: Extract ECR repo and region from tfvars
         id: parse
