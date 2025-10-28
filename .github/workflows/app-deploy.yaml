@@ -18,7 +18,7 @@ permissions:
 env:
   AWS_REGION: ap-south-1
   TF_DIR: terraform
-  S3_BUCKET: my-terraform-state-bucket
+  S3_BUCKET: ten-terraform-statefile
   DYNAMODB_TABLE: terraform-locks
 
 jobs:
