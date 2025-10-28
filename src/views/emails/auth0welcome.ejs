@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="Content-Type" />
+    <title>Welcome Email</title>
+    <meta name="description" content="Set Password Email." />
+    <style type="text/css">
+      a:hover {
+        text-decoration: underline !important;
+      }
+      body {
+        font-family: Arial;
+        background: #f2f3f8;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 670px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 3px;
+        padding: 20px;
+        box-shadow: 0 6px 18px 0 rgba(0, 0, 0, 0.06);
+      }
+      .header {
+        text-align: center;
+      }
+      .content {
+        font-size: 16px;
+        color: #371c30;
+        padding: 10px 30px;
+        text-align: left;
+      }
+      .footer {
+        font-size: 14px;
+        text-align: center;
+        padding-top: 20px;
+      }
+      .email-table {
+        width: 100%;
+        background-color: #f2f3f8;
+        border-collapse: collapse;
+        border-spacing: 0;
+      }
+      .email-table td {
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <table class="email-table">
+      <thead>
+        <tr>
+          <th scope="col" style="display: none;">Email Layout</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>
+            <table class="container">
+              <thead>
+                <tr>
+                  <th scope="col" style="display: none;">Email Content</th>
+                </tr>
+              </thead>
+              <tbody>
+              <tr>
+                <td class="header">
+                </td>
+              </tr>
+              <tr>
+                <td class="content">Hi <%= data.name %>,</td>
+              </tr>
+              <tr>
+                <td class="content">User Has Been Approved Successfully.</td>
+              </tr>
+              <tr>
+                <td class="content">
+                  <strong>Login Here:</strong>
+                  <a href="<%= process.env.FRONTEND_URL %>" target="_blank"
+                    ><%= process.env.FRONTEND_URL %></a
+                  >
+                </td>
+              </tr>
+              <tr>
+                <td class="content"><strong>Email:</strong> <%= data.to %></td>
+              </tr>
+              <tr>
+                <td class="content">
+                  We are always here to help. For any questions, contact us at
+                  <a href="mailto:contact@tennextgen.com">contact@tennextgen.com</a>.
+                </td>
+              </tr>
+              <tr>
+                <td class="content">Thank you for choosing TEN NEXT GEN.</td>
+              </tr>
+                <tr>
+                  <td class="footer">Your success is our success!</td>
+                </tr>
+              </tbody>
+            </table>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

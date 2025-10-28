@@ -1,0 +1,105 @@
+name: Build and Deploy to ECS via Terraform (Trunk-Based)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy (dev, qa, uat, prod)"
+        required: true
+        default: "dev"
+      rollback_tag:
+        description: "Rollback to a specific image tag (optional)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  TF_DIR: terraform
+
+jobs:
+  build-deploy:
+    name: Build & Deploy ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::593002333172:role/BE_Github_Actions
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set Environment
+        id: setenv
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          echo "ENVIRONMENT=$ENV" >> $GITHUB_ENV
+          echo "TFVARS_FILE=${{ env.TF_DIR }}/$ENV.tfvars" >> $GITHUB_ENV
+
+      - name: Extract ECR repo and region from tfvars
+        id: parse
+        run: |
+          ECR_REPO=$(grep '^ecr_repo' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          REGION=$(grep '^region' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
+          echo "AWS_REGION=$REGION" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        if: ${{ github.event.inputs.rollback_tag == '' }}
+        run: |
+          IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          docker build -t $ECR_REPO:$IMAGE_TAG .
+          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
+
+      - name: Push Docker image to ECR
+        if: ${{ github.event.inputs.rollback_tag == '' }}
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:${{ env.IMAGE_TAG }}
+
+      - name: Use rollback image tag (if provided)
+        if: ${{ github.event.inputs.rollback_tag != '' }}
+        run: |
+          echo "IMAGE_TAG=${{ github.event.inputs.rollback_tag }}" >> $GITHUB_ENV
+          echo "⚙️ Rollback mode: Using image tag ${{ github.event.inputs.rollback_tag }}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Terraform Init
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform init -upgrade
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform plan \
+            -var "image_tag=${{ env.IMAGE_TAG }}" \
+            -var-file="${{ env.TFVARS_FILE }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Verify ECS Service
+        run: |
+          CLUSTER=$(grep '^ecs_cluster' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          SERVICE=$(grep '^ecs_service' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE --region $AWS_REGION
+          echo "✅ ECS service $SERVICE in $CLUSTER is stable for $ENVIRONMENT"

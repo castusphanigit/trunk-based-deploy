@@ -1,0 +1,1965 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model equipment {
+  equipment_id                    Int                               @id @default(autoincrement())
+  unit_number                     String                            @unique @db.VarChar(100)
+  telematic_device_id             String                            @unique @db.VarChar(100)
+  description                     String                            @db.VarChar(255)
+  date_in_service                 DateTime?
+  estmated_life_in_months         Int?
+  vin                             String?                           @db.VarChar(255)
+  oem_lookup_id                   Int?
+  status                          String?                           @db.VarChar(10)
+  oem_make_model_lookup_id        Int?
+  equipment_type_lookup_id        Int?
+  customer_unit_number            String?                           @db.VarChar(100)
+  custom_equipment_name           String?                           @db.VarChar(255)
+  door_type                       String?                           @db.VarChar(10)
+  floor_type                      String?                           @db.VarChar(10)
+  roof_type                       String?                           @db.VarChar(10)
+  brake_type                      String?                           @db.VarChar(10)
+  rim_type                        String?                           @db.VarChar(10)
+  suspension_type                 String?                           @db.VarChar(10)
+  wall_type                       String?                           @db.VarChar(10)
+  gross_unit_weight               Decimal?                          @db.Decimal(9, 2)
+  tare_weight                     Decimal?                          @db.Decimal(9, 2)
+  uom_lookup_id                   Int?
+  tire_size                       String?                           @db.VarChar(100)
+  trailer_height                  String?                           @db.VarChar(100)
+  trailer_length                  String?                           @db.VarChar(100)
+  trailer_width                   String?                           @db.VarChar(100)
+  track_code                      String?                           @db.VarChar(10)
+  break_type                      String?                           @db.VarChar(100)
+  color                           String?                           @db.VarChar(100)
+  liftgate                        String?                           @db.VarChar(100)
+  lifgate_serial                  String?                           @db.VarChar(100)
+  ten_branch                      String?                           @db.VarChar(100)
+  last_pm_date                    DateTime?
+  next_pm_due                     DateTime?
+  dot_cvi_status                  String?
+  dot_cvi_expire                  DateTime?
+  last_reefer_pm_date             DateTime?
+  next_reefer_pm_due              DateTime?
+  last_m_and_r_date               DateTime?
+  reefer_make_type                String?
+  reefer_serial                   String?
+  axle_count                      Int?
+  ownership_type                  String?                           @db.VarChar(10)
+  acquisition_type                String?                           @db.VarChar(10)
+  acquisition_date                DateTime?
+  acquisition_price               Decimal?                          @db.Decimal(9, 2)
+  assigned_to                     String?                           @db.VarChar(50)
+  assigned_date                   DateTime
+  domicile                        String?                           @db.VarChar(255)
+  equipment_reading_id            Int?
+  is_deleted                      Boolean                           @default(false)
+  deleted_by                      Int?
+  deleted_at                      DateTime?
+  created_at                      DateTime                          @default(now())
+  created_by                      Int?
+  updated_at                      DateTime?
+  updated_by                      Int?
+  // event_master_id                 Int?
+  // geofence_id                     Json?
+  // event_master_ref                event_master?                     @relation(fields: [event_master_id], references: [event_master_id])
+  dot_inspection                  dot_inspection[]
+  brake_type_lookup               simple_field_lookup?              @relation("equipment_brake_type_relation", fields: [brake_type], references: [field_code])
+  door_type_lookup                simple_field_lookup?              @relation("equipment_door_type_relation", fields: [door_type], references: [field_code])
+  equipment_type_lookup_ref       equipment_type_lookup?            @relation(fields: [equipment_type_lookup_id], references: [equipment_type_lookup_id])
+  floor_type_lookup               simple_field_lookup?              @relation("equipment_floor_type_relation", fields: [floor_type], references: [field_code])
+  oem_ref                         oem_lookup?                       @relation(fields: [oem_lookup_id], references: [oem_lookup_id])
+  oem_make_model_ref              oem_make_model_lookup?            @relation(fields: [oem_make_model_lookup_id], references: [oem_make_model_lookup_id])
+  rim_type_lookup                 simple_field_lookup?              @relation("equipment_rim_type_relation", fields: [rim_type], references: [field_code])
+  roof_type_lookup                simple_field_lookup?              @relation("equipment_roof_type_relation", fields: [roof_type], references: [field_code])
+  simple_field_lookup             simple_field_lookup?              @relation("equipment_status_relation", fields: [status], references: [field_code])
+  suspension_type_lookup          simple_field_lookup?              @relation("equipment_suspension_type_relation", fields: [suspension_type], references: [field_code])
+  uom_ref                         uom_lookup?                       @relation(fields: [uom_lookup_id], references: [uom_lookup_id])
+  wall_type_lookup                simple_field_lookup?              @relation("equipment_wall_type_relation", fields: [wall_type], references: [field_code])
+  equipment_assignment            equipment_assignment[]
+  equipment_addon_ref             equipment_has_addon?
+  equipment_attachment_ref        equipment_has_attachment[]
+  equipment_iot_device_ref        equipment_has_iot_device?
+  equipment_load_detail           equipment_load_detail[]
+  equipment_permit                equipment_permit?
+  preventive_maintenance_event    preventive_maintenance_event[]
+  preventive_maintenance_schedule preventive_maintenance_schedule[]
+  service_requests                service_request[]                 @relation("EquipmentToServiceRequests")
+  activity_feed                   activity_feed[]
+
+  equipment_reading equipment_reading[]
+  telematics        telematics?
+  invoiceEquipments InvoiceEquipment[]
+  gate_inspections  equipment_has_gateinspection[]
+  geofence_states   geofence_state[]
+
+  @@index([unit_number], map: "unit_number_bidx1")
+  @@index([status], map: "status_bidx1")
+  // for global search
+  @@index([vin], map: "equipment_vin_bidx1")
+  @@index([customer_unit_number], map: "equipment_customer_unit_number_bidx1")
+}
+
+model equipment_reading {
+  equipment_reading_id Int       @id @default(autoincrement())
+  equipment_reading    Int
+  reading_type         String?   @default("Manual") @db.VarChar(25)
+  equipment_id         Int?
+  deleted_at           DateTime?
+  created_at           DateTime  @default(now())
+  created_by           Int?
+  updated_at           DateTime?
+  updated_by           Int?
+
+  equipment equipment? @relation(fields: [equipment_id], references: [equipment_id])
+}
+
+model equipment_load_detail {
+  equipment_load_detail_id Int                 @id @default(autoincrement())
+  equipment_id             Int
+  equipment_load_date      DateTime?
+  equipment_unload_date    DateTime?
+  equipment_load_detail    String              @db.VarChar(255)
+  equipment_load_status    String              @db.VarChar(255)
+  equipment_ref            equipment           @relation(fields: [equipment_id], references: [equipment_id])
+  load_status_lookup       simple_field_lookup @relation("equipment_load_status", fields: [equipment_load_status], references: [field_code])
+}
+
+model equipment_addon {
+  equipment_addon_id            Int                  @id @default(autoincrement())
+  addon_type                    String               @db.VarChar(10)
+  effective_date                DateTime?
+  status                        String               @db.VarChar(10)
+  addon_installation_date       DateTime?
+  addon_last_service_date       DateTime?
+  is_deleted                    Boolean              @default(false)
+  deleted_by                    Int?
+  deleted_at                    DateTime?
+  created_at                    DateTime             @default(now())
+  created_by                    Int?
+  updated_at                    DateTime?
+  updated_by                    Int?
+  equipment_addon_status_lookup simple_field_lookup  @relation("equipment_addon_status_relation", fields: [status], references: [field_code])
+  equipment_has_addon_ref       equipment_has_addon?
+
+  @@index([equipment_addon_id], map: "equipment_addon_id_idx1")
+  @@index([addon_type], map: "equipment_addon_type_bidx1")
+  @@index([status], map: "equipment_addon_status_bidx1")
+}
+
+model equipment_permit {
+  equipment_permit_id  Int       @id
+  equipment_id         Int       @unique
+  license_plate_number String?   @db.VarChar(255)
+  license_plate_state  String?   @db.VarChar(255)
+  permit_date          DateTime?
+  is_deleted           Boolean   @default(false)
+  deleted_by           Int?
+  deleted_at           DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime?
+  updated_by           String?   @db.VarChar(255)
+  equipment_ref        equipment @relation(fields: [equipment_id], references: [equipment_id])
+
+  @@index([equipment_permit_id], map: "equipment_permit_id_idx1")
+  @@index([equipment_id], map: "equipment_permit_equipment_id_bidx1")
+  //for global search
+  @@index([license_plate_number], map: "equipment_permit_license_plate_bidx1")
+}
+
+model equipment_has_addon {
+  equipment_has_addon_id            Int                 @id @default(autoincrement())
+  equipment_id                      Int                 @unique
+  equipment_addon_id                Int                 @unique
+  effective_date                    DateTime?
+  status                            String              @db.VarChar(10)
+  created_at                        DateTime            @default(now())
+  created_by                        Int?
+  equipment_addon_ref               equipment_addon     @relation(fields: [equipment_addon_id], references: [equipment_addon_id])
+  equipment_ref                     equipment           @relation(fields: [equipment_id], references: [equipment_id])
+  equipment_has_addon_status_lookup simple_field_lookup @relation("equipment_has_addon_status_relation", fields: [status], references: [field_code])
+
+  @@index([equipment_has_addon_id], map: "equipment_has_addon_id_idx1")
+  @@index([equipment_id], map: "equipment_has_addon_equipment_id_bidx1")
+  @@index([equipment_addon_id], map: "equipment_has_addon_addon_id_bidx1")
+  @@index([status], map: "equipment_has_addon_status_bidx1")
+}
+
+model iot_device {
+  iot_device_id               BigInt                    @id @default(autoincrement())
+  iot_device_vendor_lookup_id Int?
+  device_id_external          String?                   @db.VarChar(100)
+  device_type                 String?                   @db.VarChar(255)
+  device_installation_date    DateTime?
+  device_last_service_date    DateTime?
+  status                      String?                   @db.VarChar(10)
+  battery_health              String?                   @db.VarChar(100)
+  is_deleted                  Boolean                   @default(false)
+  deleted_by                  Int?
+  deleted_at                  DateTime?
+  created_at                  DateTime                  @default(now())
+  created_by                  Int?
+  updated_at                  DateTime?
+  updated_by                  Int?
+  equipment_iot_device_ref    equipment_has_iot_device?
+  iot_device_vendor_ref       iot_device_vendor_lookup? @relation(fields: [iot_device_vendor_lookup_id], references: [iot_device_vendor_lookup_id])
+  iot_device_status_lookup    simple_field_lookup?      @relation("iot_device_status_relation", fields: [status], references: [field_code])
+
+  @@index([iot_device_id], map: "iot_device_id_idx1")
+  @@index([device_id_external], map: "iot_device_external_id_bidx1")
+  @@index([device_type], map: "iot_device_type_bidx1")
+  @@index([status], map: "iot_device_status_bidx1")
+}
+
+model equipment_has_iot_device {
+  equipment_has_iot_device_id BigInt                   @id @default(autoincrement())
+  equipment_id                Int                      @unique
+  iot_device_id               BigInt                   @unique
+  effective_date              DateTime?
+  status                      String?                  @db.VarChar(10)
+  created_at                  DateTime                 @default(now())
+  created_by                  Int?
+  equipment_gps_location      equipment_gps_location[]
+
+  equipment_ref                          equipment            @relation(fields: [equipment_id], references: [equipment_id])
+  iot_device_ref                         iot_device           @relation(fields: [iot_device_id], references: [iot_device_id])
+  equipment_has_iot_device_status_lookup simple_field_lookup? @relation("equipment_has_iot_device_status_relation", fields: [status], references: [field_code])
+  iot_device_metric_ref                  iot_device_metric?
+
+  @@index([equipment_has_iot_device_id], map: "equipment_has_iot_device_id_idx1")
+  @@index([equipment_id], map: "equipment_has_iot_device_equipment_id_bidx1")
+  @@index([iot_device_id], map: "equipment_has_iot_device_iot_id_bidx1")
+}
+
+model equipment_gps_location {
+  equipment_gps_location_id         BigInt                    @id @default(autoincrement())
+  equipment_has_iot_device_id       BigInt?
+  current_equipment_gps_location_id BigInt?
+  latitude                          Decimal?                  @db.Decimal(9, 2)
+  longitude                         Decimal?                  @db.Decimal(9, 2)
+  location                          String?                   @db.VarChar(500)
+  motion_status                     String?                   @db.VarChar(10)
+  last_gps_update                   DateTime?
+  is_deleted                        Boolean                   @default(false)
+  deleted_by                        Int?
+  deleted_at                        DateTime?
+  created_at                        DateTime                  @default(now())
+  created_by                        Int?
+  updated_at                        DateTime?
+  updated_by                        Int?
+  equipment_has_iot_device_ref      equipment_has_iot_device? @relation(fields: [equipment_has_iot_device_id], references: [equipment_has_iot_device_id])
+
+  @@index([equipment_gps_location_id], map: "equipment_gps_location_id_idx1")
+  @@index([equipment_has_iot_device_id], map: "equipment_gps_location_device_id_bidx1")
+}
+
+model telematics {
+  telematics_id      BigInt    @id @default(autoincrement())
+  vendor_id          Int?
+  vendor_name        String    @db.VarChar(255)
+  unit_number        String    @unique @db.VarChar(255) // use this as FK to equipment
+  vendor_message_id  String?   @db.VarChar(255)
+  vendor_gps_owner   String?   @db.VarChar(255)
+  vendor_gps_id      String?   @db.VarChar(255)
+  vin_trailer_serial String?   @db.VarChar(255)
+  gps_battery        String?   @db.VarChar(255)
+  latitude           Decimal?  @db.Decimal(9, 6)
+  longitude          Decimal?  @db.Decimal(9, 6)
+  heading            String?   @db.VarChar(255)
+  speed              Decimal?  @db.Decimal(9, 2)
+  additional_sensors String?   @db.VarChar(1000)
+  recived_timestamp  DateTime?
+  vendor_timestamp   DateTime?
+  vendore_status     String?   @db.VarChar(255)
+  mileage            String?   @db.VarChar(255)
+  engine_hours       String?   @db.VarChar(255)
+  odometer           String?   @db.VarChar(255)
+  temperature        Decimal?  @db.Decimal(5, 2)
+  address            String?   @db.VarChar(500)
+  motion_status      String?   @db.VarChar(255)
+  alarm_code_status  String?   @default("ACTIVE") @db.VarChar(255)
+  created_at         DateTime  @default(now())
+
+  // New relation: telematics.unit_number -> equipment.unit_number
+  equipment_ref equipment                 @relation(fields: [unit_number], references: [telematic_device_id])
+  vendor_ref    iot_device_vendor_lookup? @relation(fields: [vendor_id], references: [iot_device_vendor_lookup_id])
+
+  @@index([vendor_id], map: "telematics_vendor_id_idx")
+}
+
+model iot_device_metric {
+  iot_device_metric_id         BigInt                   @id @default(autoincrement())
+  equipment_has_iot_device_id  BigInt                   @unique
+  uom_lookup_id                Int?                     @unique
+  metric_value                 Decimal?                 @db.Decimal(9, 2)
+  is_deleted                   Boolean                  @default(false)
+  deleted_by                   Int?
+  deleted_at                   DateTime?
+  created_at                   DateTime                 @default(now())
+  created_by                   Int?
+  updated_at                   DateTime?
+  updated_by                   Int?
+  equipment_has_iot_device_ref equipment_has_iot_device @relation(fields: [equipment_has_iot_device_id], references: [equipment_has_iot_device_id])
+  uom_ref                      uom_lookup?              @relation(fields: [uom_lookup_id], references: [uom_lookup_id])
+
+  @@index([iot_device_metric_id], map: "iot_device_metric_id_idx1")
+  @@index([equipment_has_iot_device_id], map: "iot_device_metric_device_id_bidx1")
+}
+
+/// final
+model attachment {
+  attachment_id                     BigInt                              @id @default(autoincrement())
+  mime_type                         String?                             @db.VarChar(100)
+  document_category_type            String                              @db.VarChar(50)
+  name                              String?                             @db.VarChar(100)
+  description                       String?                             @db.VarChar(255)
+  date_uploaded                     DateTime?
+  url                               String?                             @db.VarChar(255)
+  expiration_date                   DateTime?
+  is_deleted                        Boolean                             @default(false)
+  deleted_by                        Int?
+  deleted_at                        DateTime?
+  created_at                        DateTime                            @default(now())
+  created_by                        Int?
+  updated_at                        DateTime?
+  updated_by                        Int?
+  equipment_attachments             equipment_has_attachment?
+  master_agreement_has_attachment   master_agreement_has_attachment[]
+  schedule_agreement_has_attachment schedule_agreement_has_attachment[]
+  ers_has_attachment                ers_has_attachment?
+  workorder_has_attachment          workorder_has_attachment?
+  gateinspection_has_attachment     gateinspection_has_attachment?
+
+  @@index([attachment_id], map: "attachment_id_idx1")
+  @@index([name], map: "attachment_name_bidx1")
+}
+
+model equipment_has_attachment {
+  equipment_has_attachment_id BigInt     @id @default(autoincrement())
+  equipment_id                Int
+  attachment_id               BigInt     @unique
+  date_uploaded               DateTime?
+  expiration_date             DateTime?
+  created_at                  DateTime   @default(now())
+  created_by                  Int?
+  attachment_ref              attachment @relation(fields: [attachment_id], references: [attachment_id])
+  equipment_ref               equipment  @relation(fields: [equipment_id], references: [equipment_id])
+
+  @@index([equipment_has_attachment_id], map: "equipment_has_attachment_id_idx1")
+  @@index([equipment_id], map: "equipment_has_attachment_equipment_id_bidx1")
+  @@index([attachment_id], map: "equipment_has_attachment_attachment_id_bidx1")
+}
+
+model equipment_has_gateinspection {
+  equipment_has_gateinspection_id Int       @id @default(autoincrement())
+  equipment_id                    Int
+  inspection_date                 DateTime
+  location                        String?   @db.VarChar(255)
+  direction                       String?   @db.VarChar(50)
+  reason                          String?   @db.VarChar(255)
+  status                          String?   @default("ACTIVE") @db.VarChar(10)
+  notes                           String?   @db.VarChar(1000)
+  is_deleted                      Boolean   @default(false)
+  deleted_by                      Int?
+  deleted_at                      DateTime?
+  created_at                      DateTime  @default(now())
+  created_by                      Int?
+  updated_at                      DateTime?
+  updated_by                      Int?
+
+  // Relations
+  equipment_ref equipment                       @relation(fields: [equipment_id], references: [equipment_id])
+  attachments   gateinspection_has_attachment[]
+
+  // Optional lookup relations for direction and reason
+  direction_lookup simple_field_lookup? @relation("gate_inspection_direction_relation", fields: [direction], references: [field_code])
+  reason_lookup    simple_field_lookup? @relation("gate_inspection_reason_relation", fields: [reason], references: [field_code])
+  status_lookup    simple_field_lookup? @relation("gate_inspection_status_relation", fields: [status], references: [field_code])
+
+  @@index([equipment_has_gateinspection_id], map: "equipment_has_gateinspection_id_idx1")
+  @@index([equipment_id], map: "equipment_has_gateinspection_equipment_id_bidx1")
+  @@index([inspection_date], map: "equipment_has_gateinspection_date_bidx1")
+  @@index([location], map: "equipment_has_gateinspection_location_bidx1")
+  @@index([status], map: "equipment_has_gateinspection_status_bidx1")
+}
+
+model gateinspection_has_attachment {
+  gateinspection_has_attachment_id BigInt    @id @default(autoincrement())
+  equipment_has_gateinspection_id  Int
+  attachment_id                    BigInt    @unique
+  date_uploaded                    DateTime?
+  expiration_date                  DateTime?
+  created_at                       DateTime  @default(now())
+  created_by                       Int?
+
+  attachment_ref                   attachment                   @relation(fields: [attachment_id], references: [attachment_id])
+  equipment_has_gateinspection_ref equipment_has_gateinspection @relation(fields: [equipment_has_gateinspection_id], references: [equipment_has_gateinspection_id])
+
+  @@index([gateinspection_has_attachment_id], map: "gateinspection_has_attachment_id_idx1")
+  @@index([equipment_has_gateinspection_id], map: "gateinspection_has_attachment_gateinspection_id_bidx1")
+  @@index([attachment_id], map: "gateinspection_has_attachment_attachment_id_bidx1")
+}
+
+model equipment_type_lookup {
+  equipment_type_lookup_id     Int                            @id @default(autoincrement())
+  equipment_description        String                         @db.VarChar(255)
+  equipment_type               String                         @unique @db.VarChar(50)
+  equipment_name               String                         @db.VarChar(50)
+  is_deleted                   Boolean                        @default(false)
+  created_at                   DateTime                       @default(now())
+  created_by                   Int?
+  equipment                    equipment[]
+  schedule_agreement_line_item schedule_agreement_line_item[]
+
+  @@index([equipment_type_lookup_id], map: "equipment_type_lookup_id_idx1")
+  @@index([equipment_name], map: "equipment_type_lookup_name_bidx1")
+}
+
+model iot_device_vendor_lookup {
+  iot_device_vendor_lookup_id     Int                 @id @default(autoincrement())
+  vendor_name                     String              @db.VarChar(255)
+  vendor_description              String              @db.VarChar(255)
+  vendor_method_type              String              @db.VarChar(10)
+  vendor_service_type             String              @db.VarChar(10)
+  status                          String              @db.VarChar(10)
+  created_at                      DateTime            @default(now())
+  created_by                      Int?
+  iot_device_ref                  iot_device[]
+  iot_device_vendor_status_lookup simple_field_lookup @relation("iot_device_vendor_status_relation", fields: [status], references: [field_code])
+  ers                             ers[]
+  telematics                      telematics[]
+
+  @@index([iot_device_vendor_lookup_id], map: "iot_device_vendor_lookup_id_idx1")
+  @@index([vendor_name], map: "iot_device_vendor_lookup_name_bidx1")
+}
+
+model oem_lookup {
+  oem_lookup_id             Int                    @id @default(autoincrement())
+  manufacturer_code         String                 @unique @db.VarChar(255)
+  manufacturer_name         String                 @db.VarChar(255)
+  is_deleted                Boolean                @default(false)
+  created_at                DateTime               @default(now())
+  created_by                Int?
+  equipment                 equipment[]
+  oem_make_model_lookup_ref oem_make_model_lookup?
+
+  @@index([oem_lookup_id], map: "oem_lookup_id_idx1")
+  @@index([manufacturer_name], map: "oem_lookup_manufacturer_name_bidx1")
+}
+
+model uom_lookup {
+  uom_lookup_id         Int                @id @default(autoincrement())
+  uom_type              String             @db.VarChar(10)
+  description           String?            @db.VarChar(255)
+  is_deleted            Boolean            @default(false)
+  created_at            DateTime           @default(now())
+  created_by            Int?
+  equipment             equipment[]
+  iot_device_metric_ref iot_device_metric?
+
+  @@index([uom_lookup_id], map: "uom_lookup_id_idx1")
+  @@index([uom_type], map: "uom_lookup_type_bidx1")
+}
+
+model oem_make_model_lookup {
+  oem_make_model_lookup_id     Int                            @id @default(autoincrement())
+  oem_lookup_id                Int                            @unique
+  make                         String?                        @db.VarChar(100)
+  model                        String?                        @db.VarChar(100)
+  year                         String?                        @db.VarChar(100)
+  length                       Int?
+  is_deleted                   Boolean                        @default(false)
+  deleted_by                   Int?
+  deleted_at                   DateTime?
+  created_at                   DateTime                       @default(now())
+  created_by                   Int?
+  updated_at                   DateTime?
+  updated_by                   Int?
+  equipment_ref                equipment[]
+  oem_ref                      oem_lookup                     @relation(fields: [oem_lookup_id], references: [oem_lookup_id])
+  schedule_agreement_line_item schedule_agreement_line_item[]
+
+  @@index([oem_make_model_lookup_id], map: "oem_make_model_lookup_id_idx1")
+  @@index([oem_lookup_id], map: "oem_make_model_lookup_oem_id_bidx1")
+  @@index([make], map: "oem_make_model_lookup_make_bidx1")
+  @@index([model], map: "oem_make_model_lookup_model_bidx1")
+  @@index([year], map: "oem_make_model_lookup_year_bidx1")
+  @@index([is_deleted], map: "oem_make_model_lookup_is_deleted_bidx1")
+}
+
+model facility_lookup {
+  facility_lookup_id              Int                               @id @default(autoincrement())
+  facility_code                   String                            @unique @db.VarChar(50)
+  facility_name                   String                            @db.VarChar(50)
+  facility_description            String                            @db.VarChar(255)
+  is_deleted                      Boolean                           @default(false)
+  created_at                      DateTime                          @default(now())
+  created_by                      Int?
+  preventive_maintenance_schedule preventive_maintenance_schedule[]
+  schedule_agreement              schedule_agreement[]
+  service_request                 service_request[]
+
+  @@index([facility_lookup_id], map: "facility_lookup_id_idx1")
+  @@index([facility_name], map: "facility_name_bidx1")
+}
+
+model customer {
+  customer_id            Int       @id @default(autoincrement())
+  customer_name          String    @db.VarChar(255)
+  customer_class         String    @db.VarChar(10)
+  customer_pool          String?   @db.VarChar(255)
+  reservation            String?   @db.VarChar(255)
+  customer_po            String?   @db.VarChar(255)
+  address                String?   @db.VarChar(255)
+  status                 String    @db.VarChar(10)
+  reference_number       String    @db.VarChar(100)
+  sold_by_salesperson_id Int?
+  is_deleted             Boolean   @default(false)
+  deleted_by             Int?
+  deleted_at             DateTime?
+  created_at             DateTime  @default(now())
+  created_by             Int?
+  updated_at             DateTime?
+  updated_by             Int?
+  auth0_customer_id      String?   @db.VarChar(255)
+  web_hook_url           String?   @db.VarChar(255)
+  web_hook_password      String?   @db.VarChar(255)
+  web_hook_userName      String?   @db.VarChar(255)
+
+  // Newly added columns
+  legacy_customer_number_1 String?   @db.VarChar(10) // NEW: Legacy customer number 1 (read only)
+  customer_web_url         String?   @db.VarChar(100) // NEW: Customer web URL
+  customer_since           DateTime? // NEW: Customer since date
+  company_number_ast       Int? // NEW: Company number AST (INTEGER)
+
+  accounts               account[]
+  customer_status_lookup simple_field_lookup @relation("customer_status_relation", fields: [status], references: [field_code])
+  geofence               geofence[]
+  telematic_alerts       telematic_alert[] // inverse relation
+  activity_feeds         activity_feed[]
+
+  user              user[]
+  user_role         user_role[]
+  alert_type_lookup alert_type_lookup[]
+  ten_quick_links   ten_quick_link[]
+
+  @@index([customer_id], map: "customer_id_idx1")
+  @@index([customer_name], map: "customer_name_bidx1")
+  @@index([reference_number], map: "reference_number_bidx1")
+}
+
+model simple_field_lookup {
+  simple_field_lookup_id                    Int                               @id @default(autoincrement())
+  field_name                                String                            @db.VarChar(100)
+  field_code                                String                            @unique @db.VarChar(255)
+  short_description                         String                            @db.VarChar(100)
+  long_description                          String?                           @db.VarChar(255)
+  language_code                             String                            @default("ENG") @db.VarChar(3)
+  status                                    String                            @default("A") @db.VarChar(3)
+  effective_date                            DateTime                          @default(now())
+  is_deleted                                Boolean                           @default(false)
+  created_at                                DateTime                          @default(now())
+  created_by                                Int?
+  account_by_status                         account[]                         @relation("account_status_relation")
+  alert_templates_by_status                 alert_templates[]                 @relation("alert_template_status_relation")
+  contract_type_by_status                   contract_type_lookup[]            @relation("contract_type_status_relation")
+  country_by_status                         country_lookup[]                  @relation("country_status_relation")
+  customer_by_status                        customer[]                        @relation("customer_status_relation")
+  delivery_method_by_status                 delivery_method_lookup[]          @relation("delivery_method_status_relation")
+  equipment_by_brake_type                   equipment[]                       @relation("equipment_brake_type_relation")
+  equipment_by_door_type                    equipment[]                       @relation("equipment_door_type_relation")
+  equipment_by_floor_type                   equipment[]                       @relation("equipment_floor_type_relation")
+  equipment_by_rim_type                     equipment[]                       @relation("equipment_rim_type_relation")
+  equipment_by_roof_type                    equipment[]                       @relation("equipment_roof_type_relation")
+  equipment_by_status                       equipment[]                       @relation("equipment_status_relation")
+  equipment_by_suspension_type              equipment[]                       @relation("equipment_suspension_type_relation")
+  equipment_by_wall_type                    equipment[]                       @relation("equipment_wall_type_relation")
+  equipment_addon_by_status                 equipment_addon[]                 @relation("equipment_addon_status_relation")
+  equipment_assignment_by_reason            equipment_assignment[]            @relation("equipment_assignment_reason_relation")
+  equipment_has_addon_by_status             equipment_has_addon[]             @relation("equipment_has_addon_status_relation")
+  equipment_has_iot_device_by_status        equipment_has_iot_device[]        @relation("equipment_has_iot_device_status_relation")
+  equipment_load_by_loadStaus               equipment_load_detail[]           @relation("equipment_load_status")
+  equipment_type_allocation_by_status       equipment_type_allocation[]       @relation("equipment_type_allocation_status_relation")
+  geofence_account_by_status                geofence[]                        @relation("geofence_account_status_relation") // updated type and relation name
+  geofence_event_type_by_status             geofence_event_type_lookup[]      @relation("geofence_event_type_status_relation")
+  iot_device_by_status                      iot_device[]                      @relation("iot_device_status_relation")
+  iot_device_vendor_by_status               iot_device_vendor_lookup[]        @relation("iot_device_vendor_status_relation")
+  master_agreement_by_status                master_agreement[]                @relation("master_agreement_status_relation")
+  preventive_maintenance_event_by_status    preventive_maintenance_event[]    @relation("preventive_maintenance_event_status_relation")
+  preventive_maintenance_schedule_by_status preventive_maintenance_schedule[] @relation("preventive_maintenance_schedule_status_relation")
+  schedule_agreement_by_status              schedule_agreement[]              @relation("schedule_agreement_status_relation")
+  tag_by_status                             tag_lookup[]                      @relation("tag_status_relation")
+  user_by_status                            user[]                            @relation("user_status_relation")
+  invoice_status                            Invoice[]                         @relation("invoice_status_relation")
+  payment_status                            Payment[]                         @relation("payment_status_relation")
+  gate_inspection_by_direction              equipment_has_gateinspection[]    @relation("gate_inspection_direction_relation")
+  gate_inspection_by_reason                 equipment_has_gateinspection[]    @relation("gate_inspection_reason_relation")
+  gate_inspection_by_status                 equipment_has_gateinspection[]    @relation("gate_inspection_status_relation")
+  account_by_customer_class                 account[]                         @relation("account_customer_class_relation") // NEW: Customer class lookup
+  credit_invoice_by_status                  credit_invoice[]                  @relation("credit_invoice_status_relation") // NEW: Credit invoice status lookup
+}
+
+model user {
+  user_id              Int       @id @default(autoincrement())
+  customer_id          Int?
+  user_role_id         Int
+  country_lookup_id    Int?
+  assigned_account_ids Int[]     @default([])
+  localization_ids     Int[]     @default([]) // Array of localization_lookup_ids
+  first_name           String?   @db.VarChar(255)
+  last_name            String?   @db.VarChar(255)
+  email                String?   @unique @db.VarChar(255)
+  phone_number         String?   @db.VarChar(255)
+  designation          String?   @db.VarChar(255)
+  avatar               String?   @db.VarChar(255)
+  auth_0_reference_id  String    @unique @db.VarChar(255)
+  auth0_role_id        String?
+  status               String
+  is_customer_user     Boolean   @default(false)
+  is_first_login       Boolean?  @default(false)
+  first_active         DateTime?
+  last_active          DateTime?
+  is_user_approved     Boolean?  @default(false)
+  approved_by          Int?
+  approved_at          DateTime? @default(now())
+  created_at           DateTime  @default(now())
+  created_by           Int?
+  updated_at           DateTime?
+  updated_by           Int?
+  auth0_customer_id    String?   @db.VarChar(255)
+
+  permissions Json?
+
+  customer_ref       customer?            @relation(fields: [customer_id], references: [customer_id])
+  user_status_lookup simple_field_lookup  @relation("user_status_relation", fields: [status], references: [field_code])
+  user_role_ref      user_role            @relation(fields: [user_role_id], references: [user_role_id])
+  column_preferences column_preferences[]
+  country_lookup_ref country_lookup?      @relation(fields: [country_lookup_id], references: [country_lookup_id])
+  workorder          workorder[]
+  approved_by_user   user?                @relation("UserApproval", fields: [approved_by], references: [user_id])
+
+  approved_users user[] @relation("UserApproval")
+
+  activityFeedCreated activity_feed[]            @relation("ActivityFeedCreatedBy")
+  activityFeedUpdated activity_feed[]            @relation("ActivityFeedUpdatedBy")
+  saved_locations     service_request_location[] @relation("UserSavedLocations")
+  created_geofences   geofence[]
+  updated_geofences   geofence[]                 @relation("GeofenceUpdatedBy")
+
+  telematic_alerts_created telematic_alert[] @relation("TelematicAlertCreatedBy")
+  telematic_alerts_updated telematic_alert[] @relation("TelematicAlertUpdatedBy")
+  ten_quick_links_created  ten_quick_link[]  @relation("TenQuickLinkCreatedBy")
+
+  ers_created     ers[]             @relation("ERSCreatedBy")
+  ers_updated     ers[]             @relation("ERSUpdatedBy")
+  service_request service_request[]
+
+  // Credit invoice relations
+  credits_created      credit_invoice[]           @relation("CreditCreatedBy")
+  credit_usage_created credit_invoice_has_usage[] @relation("CreditInvoiceUsedBy")
+
+  @@index([user_id], map: "user_id_idx1")
+}
+
+model localization_lookup {
+  localization_lookup_id Int    @id @default(autoincrement())
+  locale_code            String @unique @db.VarChar(10) // e.g., "us-en", "ca-en", "ca-fr"
+  locale_name            String @db.VarChar(100) // e.g., "US English", "Canadian English", "Canadian French"
+  locale_description     String @db.VarChar(255)
+
+  // Localization settings
+  spelling_vocabulary String @db.VarChar(50) // "american", "british", "canadian", "french"
+  measurement_system  String @db.VarChar(20) // "imperial", "metric", "hybrid"
+  date_format         String @db.VarChar(20) // "MM/DD/YYYY", "DD/MM/YYYY"
+  time_format         String @db.VarChar(20) // "12h", "24h"
+  currency_code       String @db.VarChar(10) // "USD", "CAD"
+  currency_symbol     String @db.VarChar(10) // "$", "C$"
+  currency_format     String @db.VarChar(50) // "$12.50", "C$12.50", "12,50 $"
+  decimal_separator   String @db.VarChar(5) // ".", ","
+  thousands_separator String @db.VarChar(5) // ",", " "
+  temperature_unit    String @db.VarChar(10) // "F", "C"
+  distance_unit       String @db.VarChar(20) // "miles", "kilometers", "kilometres"
+  weight_unit         String @db.VarChar(20) // "pounds", "kilograms", "kilogrammes"
+
+  // Status and metadata
+  is_active                         Boolean           @default(true)
+  is_deleted                        Boolean           @default(false)
+  created_at                        DateTime          @default(now())
+  created_by                        Int?
+  updated_at                        DateTime?
+  updated_by                        Int?
+  telematic_alerts_temperature_unit telematic_alert[] @relation("TelematicAlertTemperatureUnit")
+
+  @@index([localization_lookup_id], map: "localization_lookup_id_idx1")
+  @@index([locale_code], map: "localization_lookup_code_idx1")
+  @@index([is_active], map: "localization_lookup_active_idx1")
+}
+
+model column_preferences {
+  column_preferences_id           Int                           @id @default(autoincrement())
+  user_id                         Int
+  column_preference_table_name_id Int
+  selected_columns                Json
+  created_at                      DateTime                      @default(now())
+  updated_at                      DateTime                      @updatedAt
+  user                            user                          @relation(fields: [user_id], references: [user_id])
+  column_preference_table         column_preference_table_name? @relation(fields: [column_preference_table_name_id], references: [column_preference_table_name_id])
+
+  @@unique([user_id, column_preference_table_name_id])
+}
+
+model column_preference_table_name {
+  column_preference_table_name_id Int    @id @default(autoincrement())
+  table_name                      String @db.VarChar(100)
+
+  column_preferences column_preferences[]
+}
+
+model ten_quick_link {
+  ten_quick_link_id Int      @id @default(autoincrement())
+  name              String   @db.VarChar(255)
+  link              String   @db.VarChar(500)
+  description       String?  @db.VarChar(1000)
+  customer_id       Int?
+  created_by        Int?
+  created_at        DateTime @default(now())
+
+  // Relations
+  customer customer? @relation(fields: [customer_id], references: [customer_id])
+  creator  user?     @relation("TenQuickLinkCreatedBy", fields: [created_by], references: [user_id])
+
+  @@map("ten_quick_link")
+}
+
+model user_role {
+  user_role_id Int  @id @default(autoincrement())
+  customer_id  Int?
+
+  name                   String
+  description            String?
+  auth0_role_id          String?
+  auth0_role_name        String?   @db.VarChar(255)
+  accessible_account_ids Int[]
+  role_permission        Json?
+  created_at             DateTime  @default(now())
+  created_by             Int?
+  updated_by             DateTime? @default(now())
+  deleted_by             Int?
+  deleted_at             DateTime?
+  users                  user[]
+  customer               customer? @relation(fields: [customer_id], references: [customer_id])
+
+  @@unique([customer_id, name])
+}
+
+model account {
+  account_id              Int         @id @default(autoincrement())
+  parent_account_id       Int?
+  billing_account_id      Int?
+  customer_id             Int
+  primary_contact_user_id Int?
+  country_lookup_id       Int
+  account_name            String?     @db.VarChar(255)
+  account_number          String?     @db.VarChar(20)
+  legacy_account_number   String?     @db.VarChar(30)
+  account_type            AccountType @default(NATIONAL)
+  account_manager_id      Int?
+  number_of_users         Int?
+  status                  String?     @db.VarChar(10)
+  currency_type           String?
+  facility                String?     @db.VarChar(255)
+  is_deleted              Boolean     @default(false)
+  deleted_by              Int?
+  deleted_at              DateTime?
+  created_at              DateTime    @default(now())
+  created_by              Int?
+  updated_at              DateTime?
+  updated_by              Int?
+
+  // Newly added columns
+  lease_manager_id       Int? // NEW: Lease manager reference
+  rental_manager_id      Int? // NEW: Rental manager reference
+  maintenance_manager_id Int? // NEW: Maintenance manager reference
+  customer_class         String?              @db.VarChar(10) // NEW: Customer class lookup
+  reference_number       String?              @db.VarChar(10) // NEW: Legacy customer number from ALTERNATE_ENTITY_KEY_AST
+  legacy_customer_number Int? // NEW: Legacy customer number (INTEGER)
+  primary_lang_code      String?              @db.VarChar(1) // NEW: Primary language code
+  effective_date         DateTime? // NEW: Effective date for the account
+  country_lookup_ref     country_lookup       @relation(fields: [country_lookup_id], references: [country_lookup_id])
+  customer               customer             @relation(fields: [customer_id], references: [customer_id])
+  account_status_lookup  simple_field_lookup? @relation("account_status_relation", fields: [status], references: [field_code])
+  currency_lookup        currency_lookup?     @relation(fields: [currency_type], references: [currencytype])
+
+  // Newly added lookup relations
+  customer_class_lookup           simple_field_lookup?              @relation("account_customer_class_relation", fields: [customer_class], references: [field_code]) // NEW: Customer class lookup
+  dot_inspection                  dot_inspection[]
+  equipment_type_allocation       equipment_type_allocation[]
+  preventive_maintenance_event    preventive_maintenance_event[]
+  preventive_maintenance_schedule preventive_maintenance_schedule[]
+  activity_feed                   activity_feed[]
+
+  service_request service_request[]
+  Invoice         Invoice[]
+  Payment         Payment[]
+  PaymentInvoice  PaymentInvoice[]
+  credit_invoice  credit_invoice[]
+
+  @@index([account_id], map: "account_id_idx1")
+  @@index([customer_id], map: "account_customer_id_bidx1")
+  //for global search
+  @@index([account_name], map: "account_name_search_bidx1")
+  @@index([account_number], map: "account_number_search_bidx1")
+  @@index([legacy_account_number], map: "account_legacy_number_bidx1")
+}
+
+model contract_type_lookup {
+  contract_type_lookup_id     Int                  @id @default(autoincrement())
+  contract_type               String?              @db.VarChar(255)
+  description                 String               @db.VarChar(255)
+  frequency                   Int
+  non_cancellable_months      Int?
+  unit_of_measurement         String?              @db.VarChar(255)
+  billing_method              String               @db.VarChar(10)
+  contract_panel_type         String?              @db.VarChar(50)
+  fs_unit_flg                 Boolean?             @default(false)
+  fs_reefer_flg               Boolean?             @default(false)
+  maint_contract_flg          Boolean?             @default(false)
+  status                      String               @db.VarChar(10)
+  created_at                  DateTime             @default(now())
+  created_by                  Int?
+  contract_type_status_lookup simple_field_lookup  @relation("contract_type_status_relation", fields: [status], references: [field_code])
+  schedule_agreement          schedule_agreement[]
+}
+
+model master_agreement {
+  master_agreement_id     Int       @id @default(autoincrement())
+  master_agreement_ref    String?   @unique @db.VarChar(255)
+  contract_term_type      String    @db.VarChar(10)
+  contract_effective_date DateTime
+  contract_term           Int
+  contract_billing_method String    @db.VarChar(10)
+  status                  String    @db.VarChar(10)
+  contract_end_date       DateTime
+  contract_start_Date     DateTime?
+  is_deleted              Boolean   @default(false)
+  deleted_by              Int?
+  deleted_at              DateTime?
+  created_at              DateTime  @default(now())
+  created_by              Int?
+  updated_at              DateTime?
+  updated_by              Int?
+
+  master_agreement_status_lookup simple_field_lookup               @relation("master_agreement_status_relation", fields: [status], references: [field_code])
+  attachments                    master_agreement_has_attachment[]
+  schedule_agreement             schedule_agreement[]
+
+  @@index([master_agreement_id], map: "master_agreement_id_idx1")
+  @@index([status], map: "master_agreement_status_bidx1")
+}
+
+model master_agreement_has_attachment {
+  master_agreement_has_attachment_id BigInt           @id @default(autoincrement())
+  master_agreement_id                Int
+  attachment_id                      BigInt
+  date_uploaded                      DateTime?
+  expiration_date                    DateTime?
+  created_at                         DateTime         @default(now())
+  created_by                         Int?
+  attachment                         attachment       @relation(fields: [attachment_id], references: [attachment_id])
+  master_agreement                   master_agreement @relation(fields: [master_agreement_id], references: [master_agreement_id])
+
+  @@index([master_agreement_has_attachment_id], map: "master_agreement_master_agreement_has_attachment_id_idx1")
+  @@index([master_agreement_id], map: "master_agreement_master_agreement_id_bidx1")
+  @@index([attachment_id], map: "master_agreement_attachment_id_bidx1")
+}
+
+model schedule_agreement {
+  schedule_agreement_id             Int                                 @id @default(autoincrement())
+  schedule_agreement_ref            String?                             @unique @db.VarChar(255)
+  master_agreement_id               Int
+  schedule_type                     String                              @db.VarChar(4)
+  contract_type_lookup_id           Int
+  facility_lookup_id                Int
+  effective_date                    DateTime
+  contract_term                     Int
+  contract_term_type                String                              @db.VarChar(10)
+  contract_billing_method           String                              @db.VarChar(10)
+  agreement_po                      String?
+  schedule_agreement_date           DateTime
+  termination_date                  DateTime
+  early_termination_date            DateTime
+  full_term_months                  Int
+  non_cancel_months                 Int
+  is_sub_unit_allowed               Boolean                             @default(false)
+  max_sub_days                      Int
+  max_sub_days_duration             Int
+  status                            String                              @db.VarChar(10)
+  created_by                        Int?
+  created_at                        DateTime
+  updated_at                        DateTime
+  updated_by                        Int?
+  dot_inspection                    dot_inspection[]
+  preventive_maintenance_schedule   preventive_maintenance_schedule[]
+  contract_type_lookup_ref          contract_type_lookup                @relation(fields: [contract_type_lookup_id], references: [contract_type_lookup_id])
+  facility_lookup_ref               facility_lookup                     @relation(fields: [facility_lookup_id], references: [facility_lookup_id])
+  master_agreement_ref              master_agreement                    @relation(fields: [master_agreement_id], references: [master_agreement_id])
+  schedule_agreement_status_lookup  simple_field_lookup                 @relation("schedule_agreement_status_relation", fields: [status], references: [field_code])
+  schedule_agreement_has_attachment schedule_agreement_has_attachment[]
+  schedule_agreement_line_item      schedule_agreement_line_item[]
+}
+
+model schedule_agreement_has_attachment {
+  schedule_agreement_has_attachment_id BigInt             @id @default(autoincrement())
+  schedule_agreement_id                Int
+  attachment_id                        BigInt?
+  date_uploaded                        DateTime
+  expiration_date                      DateTime
+  created_at                           DateTime
+  created_by                           Int?
+  attachment                           attachment?        @relation(fields: [attachment_id], references: [attachment_id])
+  schedule_agreement_ref               schedule_agreement @relation(fields: [schedule_agreement_id], references: [schedule_agreement_id])
+}
+
+model equipment_type_allocation {
+  equipment_type_allocation_id            Int                          @id @default(autoincrement())
+  schedule_agreement_line_item_id         Int
+  account_id                              Int
+  units_allowed                           Int
+  units_assigned                          Int
+  unit_pickup_date                        DateTime?                    @default(now())
+  unit_turnedIn_date                      DateTime?                    @default(now())
+  pms_override                            Boolean
+  status                                  String                       @db.VarChar(10)
+  created_at                              DateTime                     @default(now())
+  created_by                              Int?
+  equipment_assignment                    equipment_assignment[]
+  account                                 account                      @relation(fields: [account_id], references: [account_id])
+  schedule_agreement_line_item_ref        schedule_agreement_line_item @relation(fields: [schedule_agreement_line_item_id], references: [schedule_agreement_line_item_id])
+  equipment_type_allocation_status_lookup simple_field_lookup          @relation("equipment_type_allocation_status_relation", fields: [status], references: [field_code])
+
+  @@index([equipment_type_allocation_id], map: "equipment_type_allocation_id_idx1")
+}
+
+model schedule_agreement_line_item {
+  schedule_agreement_line_item_id Int                         @id @default(autoincrement())
+  schedule_agreement_id           Int
+  equipment_type_lookup_id        Int
+  oem_make_model_lookup_id        Int
+  number_of_units                 Int?
+  number_of_months                Int?
+  rate                            Int?
+  fixed_rate                      Int?
+  variable_rate                   Int?
+  daily_rate                      Int?
+  weekly_rate                     Int?
+  monthly_rate                    Int?
+  estimated_miles                 Int?
+  estimated_hours                 String?
+  billing_info                    String?
+  status                          String                      @db.VarChar(10)
+  created_at                      DateTime                    @default(now())
+  created_by                      Int?
+  updated_at                      DateTime?
+  updated_by                      Int?
+  equipment_type_allocation       equipment_type_allocation[]
+  equipment_type_lookup_ref       equipment_type_lookup       @relation(fields: [equipment_type_lookup_id], references: [equipment_type_lookup_id])
+  oem_make_model_lookup_ref       oem_make_model_lookup       @relation(fields: [oem_make_model_lookup_id], references: [oem_make_model_lookup_id])
+  schedule_agreement_ref          schedule_agreement          @relation(fields: [schedule_agreement_id], references: [schedule_agreement_id])
+}
+
+model equipment_assignment {
+  equipment_assignment_id            Int                       @id @default(autoincrement())
+  equipment_type_allocation_id       Int
+  equipment_id                       Int
+  activation_date                    DateTime
+  deactivation_date                  DateTime
+  action_reason_type                 String                    @db.VarChar(4)
+  driver_name                        String                    @db.VarChar(100)
+  is_substitute_allowed              Boolean                   @default(false)
+  is_gps_tracking                    Boolean                   @default(false)
+  created_by                         Int?
+  created_at                         DateTime                  @default(now())
+  updated_at                         DateTime
+  updated_by                         Int?
+  equipment_assignment_reason_lookup simple_field_lookup       @relation("equipment_assignment_reason_relation", fields: [action_reason_type], references: [field_code])
+  equipment_ref                      equipment                 @relation(fields: [equipment_id], references: [equipment_id])
+  equipment_type_allocation_ref      equipment_type_allocation @relation(fields: [equipment_type_allocation_id], references: [equipment_type_allocation_id])
+}
+
+model country_lookup {
+  country_lookup_id            Int                 @id @default(autoincrement())
+  country_code                 String              @unique
+  country_name                 String?
+  status                       String              @db.VarChar(10)
+  created_at                   DateTime            @default(now())
+  created_by                   Int?
+  account                      account[]
+  country_lookup_status_lookup simple_field_lookup @relation("country_status_relation", fields: [status], references: [field_code])
+
+  user user[]
+}
+
+model tag_lookup {
+  tag_lookup_id            Int                 @id @default(autoincrement())
+  tag_name                 String              @unique
+  status                   String              @default("ACTIVE")
+  created_at               DateTime            @default(now())
+  created_by               Int?
+  geofence                 geofence[] // updated from geofence_account[]
+  tag_lookup_status_lookup simple_field_lookup @relation("tag_status_relation", fields: [status], references: [field_code])
+}
+
+model activity_feed {
+  activity_feed_id Int @id @default(autoincrement())
+
+  equipment_id       Int?
+  account_id         Int?
+  customer_id        Int? // nullable FK
+  geofence_id        Int?
+  telematic_alert_id Int?
+
+  alert_type_id     Int? // new optional FK to alert_type_lookup
+  alert_category_id Int? // new optional FK to alert_category_lookup
+
+  latitude   Float
+  longitude  Float
+  event_time DateTime @default(now())
+
+  equipment       equipment?       @relation(fields: [equipment_id], references: [equipment_id])
+  account         account?         @relation(fields: [account_id], references: [account_id])
+  customer        customer?        @relation(fields: [customer_id], references: [customer_id])
+  geofence        geofence?        @relation(fields: [geofence_id], references: [geofence_id])
+  telematic_alert telematic_alert? @relation(fields: [telematic_alert_id], references: [telematic_alert_id])
+
+  alert_type     alert_type_lookup?     @relation("AlertTypeToActivityFeed", fields: [alert_type_id], references: [alert_type_lookup_id])
+  alert_category alert_category_lookup? @relation("AlertCategoryToActivityFeed", fields: [alert_category_id], references: [alert_category_lookup_id])
+
+  is_deleted Boolean   @default(false)
+  deleted_by Int?
+  deleted_at DateTime?
+
+  created_at DateTime  @default(now())
+  created_by Int?
+  updated_at DateTime?
+  updated_by Int?
+
+  created_by_user user? @relation("ActivityFeedCreatedBy", fields: [created_by], references: [user_id])
+  updated_by_user user? @relation("ActivityFeedUpdatedBy", fields: [updated_by], references: [user_id])
+
+  @@index([equipment_id])
+  @@index([account_id])
+  @@index([customer_id])
+  @@index([geofence_id])
+  @@index([telematic_alert_id])
+  @@index([event_time])
+  @@index([alert_type_id])
+  @@index([alert_category_id])
+}
+
+model alert_type_lookup {
+  alert_type_lookup_id     Int       @id @default(autoincrement())
+  event_name               String
+  event_type               String?
+  metric_value             Int?      @default(0)
+  operation_type           String
+  customer_id              Int?
+  alert_category_lookup_id Int? // was event_category_master_id
+  status                   String?   @db.VarChar(50)
+  created_at               DateTime  @default(now())
+  created_by               Int?
+  updated_at               DateTime?
+  updated_by               String?
+
+  customer              customer?              @relation(fields: [customer_id], references: [customer_id])
+  alert_category_lookup alert_category_lookup? @relation(fields: [alert_category_lookup_id], references: [alert_category_lookup_id])
+  // telematic_alerts      telematic_alert[]      @relation("AlertTypeLookupTelematicAlerts")
+  activity_feeds        activity_feed[]        @relation("AlertTypeToActivityFeed")
+}
+
+model alert_category_lookup {
+  alert_category_lookup_id Int       @id @default(autoincrement())
+  category_name            String    @db.VarChar(255)
+  status                   String    @db.VarChar(50)
+  event_vendor_id          Int[]     @default([])
+  is_deleted               Boolean   @default(false)
+  deleted_by               Int?
+  deleted_at               DateTime?
+
+  created_at DateTime  @default(now())
+  created_by Int?
+  updated_at DateTime?
+  updated_by Int?
+
+  // new reverse relation names
+  alert_types      alert_type_lookup[] // updated from event_masters
+  telematic_alerts telematic_alert[]   @relation("AlertCategoryLookupTelematicAlerts")
+  activity_feeds   activity_feed[]     @relation("AlertCategoryToActivityFeed")
+}
+
+model geofence {
+  geofence_id            Int                  @id @default(autoincrement())
+  geofence_name          String
+  description            String?
+  geofence_location      String?
+  shape_type             String
+  polygon                Bytes? /// need to check this setup GEOMETRY(POLYGON, 4326)
+  center_lat             Float?
+  center_lng             Float?
+  radius_meters          Float?
+  owner                  String?
+  status                 String?              @default("ACTIVE")
+  account_ids            Json?
+  zoom_level             Float?
+  // event_master_id Int?
+  // event_master    event_master? @relation(fields: [event_master_id], references: [event_master_id])... 
+  customer_id            Int?
+  assets_in_geofence     Int?
+  tag_lookup_id          Int?
+  is_deleted             Boolean              @default(false)
+  created_at             DateTime             @default(now())
+  created_by             Int?
+  updated_at             DateTime?
+  updated_by             Int?
+  customer               customer?            @relation(fields: [customer_id], references: [customer_id])
+  geofence_status_lookup simple_field_lookup? @relation("geofence_account_status_relation", fields: [status], references: [field_code])
+  tag_lookup             tag_lookup?          @relation(fields: [tag_lookup_id], references: [tag_lookup_id])
+  created_by_user        user?                @relation(fields: [created_by], references: [user_id]) //  added relation
+  updated_by_user        user?                @relation("GeofenceUpdatedBy", fields: [updated_by], references: [user_id]) //  added updated_by relation
+  activity_feed          activity_feed[]
+  geofence_states        geofence_state[]
+}
+
+model geofence_state {
+  equipment_id  Int
+  geofence_id   Int
+  is_inside     Boolean
+  last_state_id Int?     @db.SmallInt
+  updated_at    DateTime @default(now()) @db.Timestamptz
+
+  equipment equipment @relation(fields: [equipment_id], references: [equipment_id])
+  geofence  geofence  @relation(fields: [geofence_id], references: [geofence_id])
+
+  @@id([equipment_id, geofence_id])
+  @@index([equipment_id], map: "geofence_state_equipment_id_idx")
+  @@index([geofence_id], map: "geofence_state_geofence_id_idx")
+  @@index([updated_at], map: "geofence_state_updated_at_idx")
+}
+
+model geofence_event_type_lookup {
+  geofence_event_type_lookup_id     Int                 @id @default(autoincrement())
+  event_name                        String              @db.VarChar(225)
+  event_category                    String              @db.VarChar(255)
+  description                       String              @db.VarChar(255)
+  status                            String              @db.VarChar(10)
+  created_at                        DateTime            @default(now())
+  created_by                        Int?
+  geofence_event_type_status_lookup simple_field_lookup @relation("geofence_event_type_status_relation", fields: [status], references: [field_code])
+}
+
+model telematic_alert {
+  telematic_alert_id Int     @id @default(autoincrement())
+  alert_name         String? @db.VarChar(255)
+  event_low          String? @db.VarChar(255)
+  event_high         String? @db.VarChar(255)
+
+  converted_type  String? @db.VarChar(255)
+  converted_value Int[]   @default([])
+
+  temperature_unit_id    Int?
+  account_id             Int[]     @default([])
+  geofence_id            Int[]     @default([])
+  status                 String    @db.VarChar(50)
+  is_deleted             Boolean   @default(false)
+  equipmentSelectAll     Boolean   @default(false)
+  webhook                Boolean   @default(false)
+  customer_id            Int?
+  alert_type_id          Int[]     @default([])
+  alert_category_id      Int?
+  between_hours_from     String?   @db.VarChar(8)
+  between_hours_to       String?   @db.VarChar(8)
+  specific_days          String[]  @default([])
+  start_date             DateTime?
+  end_date               DateTime?
+  textRecipientsObj      Json?
+  emailRecipientsObj     Json?
+  equipment_ids          Int[]     @default([])
+  selected_equipment_ids Int[]     @default([])
+  event_duration         String?   @db.VarChar(255)
+  delivery_methods       Int[]     @default([])
+  recipients             String[]
+  recipients_email       String[]  @default([])
+  recipients_mobile      String[]  @default([])
+  recipients_user_ids    Int[]     @default([])
+
+  deleted_by Int?
+  deleted_at DateTime
+  created_at DateTime @default(now())
+  created_by Int?
+  updated_by Int?
+  updated_at DateTime
+
+  // Update relation names to correspond to new model names
+  customer         customer?              @relation(fields: [customer_id], references: [customer_id])
+  temperature_unit localization_lookup?   @relation("TelematicAlertTemperatureUnit", fields: [temperature_unit_id], references: [localization_lookup_id])
+  created_by_user  user?                  @relation("TelematicAlertCreatedBy", fields: [created_by], references: [user_id])
+  updated_by_user  user?                  @relation("TelematicAlertUpdatedBy", fields: [updated_by], references: [user_id])
+  alert_category   alert_category_lookup? @relation("AlertCategoryLookupTelematicAlerts", fields: [alert_category_id], references: [alert_category_lookup_id])
+
+  activity_feeds activity_feed[]
+}
+
+model geofence_alert_config {
+  alert_config_id         Int      @id @default(autoincrement())
+  account_id              Int
+  recipient_id            Int
+  delivery_id             Int
+  alert_enabled           String   @db.VarChar(10)
+  delivery_frequency_code String   @db.VarChar(255)
+  alert_period            String   @db.VarChar(255)
+  alert_expiry_date       DateTime
+  is_deleted              Boolean  @default(false)
+  deleted_by              Int?
+  deleted_at              DateTime
+  created_at              DateTime @default(now())
+  created_by              Int?
+  updated_at              DateTime
+  updated_by              Int?
+}
+
+model alert_recipients {
+  recipient_id Int      @id @default(autoincrement())
+  account_id   Int
+  user_id      Int
+  created_at   DateTime @default(now())
+  is_deleted   Boolean  @default(false)
+  deleted_by   Int?
+  deleted_at   DateTime
+  created_by   Int?
+  updated_at   DateTime
+  updated_by   Int?
+}
+
+model delivery_method_lookup {
+  delivery_id                   Int                 @id @default(autoincrement())
+  method_type                   String              @db.VarChar(20)
+  status                        String              @db.VarChar(10)
+  created_at                    DateTime            @default(now())
+  created_by                    Int?
+  delivery_method_status_lookup simple_field_lookup @relation("delivery_method_status_relation", fields: [status], references: [field_code])
+
+  // geofence_alerts geofence_alerts[] //  added reverse relation
+}
+
+model alert_templates {
+  template_id                  BigInt               @id @default(autoincrement())
+  alert_id                     BigInt
+  subject_template             String?              @db.VarChar(200)
+  body_template                String?              @db.VarChar(1000)
+  delivery_id                  String               @db.VarChar(50)
+  status                       String?              @db.VarChar(50)
+  is_deleted                   Boolean              @default(false)
+  deleted_by                   Int?
+  deleted_at                   DateTime
+  created_at                   DateTime             @default(now())
+  created_by                   Int?
+  updated_at                   DateTime
+  updated_by                   Int?
+  alert_template_status_lookup simple_field_lookup? @relation("alert_template_status_relation", fields: [status], references: [field_code])
+}
+
+model preventive_maintenance_schedule {
+  pm_schedule_id                                Int                            @id @default(autoincrement())
+  schedule_agreement_id                         Int
+  equipment_id                                  Int?
+  account_id                                    Int
+  facility_lookup_id                            Int                            @default(1)
+  type                                          String?                        @default("PM 180") @db.VarChar(255)
+  pm_task_description                           String                         @db.VarChar(255)
+  frequency_interval                            Int
+  frequency_type                                String                         @db.VarChar(10)
+  status                                        String                         @db.VarChar(15)
+  comments                                      String?
+  created_at                                    DateTime                       @default(now())
+  created_by                                    Int?
+  updated_at                                    DateTime?
+  updated_by                                    Int?
+  preventive_maintenance_events                 preventive_maintenance_event[]
+  account                                       account                        @relation(fields: [account_id], references: [account_id])
+  equipment                                     equipment?                     @relation(fields: [equipment_id], references: [equipment_id])
+  facility_lookup                               facility_lookup                @relation(fields: [facility_lookup_id], references: [facility_lookup_id])
+  schedule_agreement                            schedule_agreement             @relation(fields: [schedule_agreement_id], references: [schedule_agreement_id])
+  preventive_maintenance_schedule_status_lookup simple_field_lookup            @relation("preventive_maintenance_schedule_status_relation", fields: [status], references: [field_code])
+
+  @@index([account_id], map: "pm_schedule_account_idx")
+  @@index([facility_lookup_id], map: "pm_schedule_facility_idx")
+}
+
+model preventive_maintenance_event {
+  pm_event_id                                Int                             @id @default(autoincrement())
+  equipment_id                               Int
+  pm_schedule_id                             Int
+  account_id                                 Int
+  performed_date                             DateTime?
+  next_due_date                              DateTime
+  work_performed                             String?                         @db.VarChar(255)
+  location                                   String?                         @db.VarChar(255)
+  vendor_technician                          String?                         @db.VarChar(255)
+  time_taken                                 Int?
+  warranty_status                            String?                         @db.VarChar(255)
+  after_hours                                Boolean?                        @default(false)
+  notes                                      String?
+  status                                     String                          @db.VarChar(15)
+  created_at                                 DateTime                        @default(now())
+  created_by                                 Int?
+  updated_at                                 DateTime?
+  updated_by                                 Int?
+  pm_parts_used                              pm_parts_used[]
+  account                                    account                         @relation(fields: [account_id], references: [account_id])
+  equipment                                  equipment                       @relation(fields: [equipment_id], references: [equipment_id])
+  preventive_maintenance_schedule            preventive_maintenance_schedule @relation(fields: [pm_schedule_id], references: [pm_schedule_id])
+  preventive_maintenance_event_status_lookup simple_field_lookup             @relation("preventive_maintenance_event_status_relation", fields: [status], references: [field_code])
+
+  @@index([account_id], map: "pm_event_account_idx")
+}
+
+model pm_parts_used {
+  pm_parts_id                  Int                          @id @default(autoincrement())
+  pm_event_id                  Int
+  part_name                    String                       @db.VarChar(255)
+  part_quantity                Int
+  part_cost                    Decimal?                     @db.Decimal(10, 2)
+  created_at                   DateTime                     @default(now())
+  created_by                   Int?
+  updated_at                   DateTime?
+  updated_by                   Int?
+  preventive_maintenance_event preventive_maintenance_event @relation(fields: [pm_event_id], references: [pm_event_id])
+}
+
+model dot_inspection {
+  dot_inspection_id     Int      @id @default(autoincrement())
+  equipment_id          Int
+  account_id            Int      @default(1)
+  schedule_agreement_id Int
+  inspection_date       DateTime
+  inspector_name        String   @db.VarChar(255)
+  inspection_result     String   @db.VarChar(15)
+  notes                 String?  @db.VarChar(255)
+  type                  String?  @default("PM 180") @db.VarChar(255)
+
+  next_inspection_due      DateTime?
+  valid_through            DateTime?
+  compliance               String?                    @db.VarChar(255)
+  created_at               DateTime                   @default(now())
+  status                   String?                    @default("ACTIVE") @db.VarChar(10)
+  created_by               Int?
+  updated_at               DateTime?
+  updated_by               Int?
+  account                  account                    @relation(fields: [account_id], references: [account_id])
+  equipment                equipment                  @relation(fields: [equipment_id], references: [equipment_id])
+  schedule_agreement       schedule_agreement         @relation(fields: [schedule_agreement_id], references: [schedule_agreement_id])
+  dot_inspection_violation dot_inspection_violation[]
+
+  @@index([account_id], map: "dot_inspection_account_idx")
+}
+
+model dot_inspection_violation {
+  dot_inspection_violation_id Int            @id @default(autoincrement())
+  dot_inspection_id           Int
+  violation_code              String         @db.VarChar(50)
+  description                 String
+  severity_level              String         @db.VarChar(20)
+  corrective_action_taken     String?
+  created_at                  DateTime       @default(now())
+  created_by                  Int?
+  updated_at                  DateTime?
+  updated_by                  Int?
+  dot_inspection              dot_inspection @relation(fields: [dot_inspection_id], references: [dot_inspection_id])
+}
+
+model service_request {
+  service_request_id Int @id @default(autoincrement())
+
+  account_id                Int
+  equipment_id              Int?
+  non_ten_unit_number       String?
+  non_ten_unit_company      String?
+  non_ten_carrier           String?
+  non_ten_vin_number        String?
+  service_urgency_lookup_id Int
+
+  service_urgency_type_lookup_id Int?
+  service_issues_lookup_ids      Int[]     @default([])
+  emergency_contact_date         DateTime?
+
+  service_type_repairedby_date   DateTime?
+  service_type_repairedfrom_date DateTime?
+  unit_street                    String?
+  unit_city                      String?
+  unit_state                     String?
+  unit_zipcode                   String?
+  location_nick_name             String?
+  issue_description              String?
+  tire_size_lookup_id            Int?
+  other_type_size                String?
+  saved_location_id              Int?
+  attachment_ids                 Int[]     @default([])
+  is_loaded                      Boolean
+  is_hazardous                   Boolean
+  is_driver_available            Boolean
+  driver_name                    String?
+  driver_phone_nuber             String?
+  primary_contact_name           String
+  primary_contact_method         Json
+  primary__contact_phonenumber   String
+  primary_contact_email          String
+  secondary_contact_name         String?
+  secondary_contact_method       Json?
+  secondary__contact_phonenumber String?
+  secondary_contact_email        String?
+  to_save_location               Boolean
+
+  is_gps_location Boolean  @default(false)
+  latitude        Decimal? @db.Decimal(9, 6)
+  longititude     Decimal? @db.Decimal(9, 6)
+  address         String?
+  location_notes  String?
+
+  facility_lookup_id  Int?
+  is_request_pickup   Boolean @default(false)
+  po_reference_number String?
+
+  created_by Int
+  created_at DateTime @default(now())
+
+  equipment_ref equipment? @relation("EquipmentToServiceRequests", fields: [equipment_id], references: [equipment_id])
+
+  service_urgency_ref             service_urgency_lookup       @relation(fields: [service_urgency_lookup_id], references: [service_urgency_lookup_id])
+  service_urgency_type_lookup_ref service_urgency_type_lookup? @relation(fields: [service_urgency_type_lookup_id], references: [service_urgency_type_lookup_id])
+  facility_lookup                 facility_lookup?             @relation(fields: [facility_lookup_id], references: [facility_lookup_id])
+  user                            user?                        @relation(fields: [created_by], references: [user_id])
+  account                         account?                     @relation(fields: [account_id], references: [account_id])
+  service_saved_location          service_request_location?    @relation(fields: [saved_location_id], references: [service_request_location_id])
+
+  tire_size_lookup tire_size_lookup? @relation(fields: [tire_size_lookup_id], references: [tire_size_lookup_id])
+  workorder        workorder[]
+  ers              ers[]
+}
+
+model service_urgency_lookup {
+  service_urgency_lookup_id Int @id @default(autoincrement())
+
+  urgency_code String @unique @db.VarChar(255)
+
+  description String? @db.VarChar(255)
+
+  status String? @db.VarChar(10)
+
+  created_at DateTime @default(now())
+
+  created_by String? @db.VarChar(255)
+
+  updated_at DateTime?
+
+  updated_by String? @db.VarChar(255)
+
+  service_requests service_request[]
+
+  @@index([urgency_code], map: "service_urgency_code_bidx1")
+  @@index([status], map: "service_urgency_status_bidx1")
+}
+
+model service_urgency_type_lookup {
+  service_urgency_type_lookup_id Int @id @default(autoincrement())
+
+  selection_code String @unique @db.VarChar(20) // 'OFF_YARD_MOBILE', etc.
+
+  selection_name String  @db.VarChar(100) // 'Off Yard Mobile Service'
+  description    String? @db.VarChar(255)
+
+  is_active       Boolean           @default(true)
+  service_request service_request[]
+
+  @@index([selection_code], map: "service_type_selection_code_idx")
+  @@index([is_active], map: "service_type_selection_active_idx")
+}
+
+model service_request_location {
+  service_request_location_id Int @id @default(autoincrement())
+
+  user_id            Int
+  location_nick_name String?
+  unit_street        String?
+  unit_city          String?
+  unit_state         String?
+  unit_zipcode       String?
+  is_active          Boolean   @default(true)
+  created_at         DateTime?
+  updated_at         DateTime?
+
+  service_requests service_request[]
+
+  user_ref user? @relation("UserSavedLocations", fields: [user_id], references: [user_id]) // newly added
+
+  @@index([is_active], map: "saved_location_active_idx")
+}
+
+model service_issues_lookup {
+  service_issues_lookup_id Int @id @default(autoincrement())
+
+  type_name String @db.VarChar(100) // "Inspection (PM/DOT)", "Brakes", "Tires", etc.
+
+  status     String?  @db.VarChar(10)
+  created_at DateTime @default(now())
+}
+
+model tire_size_lookup {
+  tire_size_lookup_id Int @id @default(autoincrement())
+
+  size_code String @unique @db.VarChar(20) // "295_75_22_5"
+
+  size_display String @db.VarChar(50) // "295 75 22.5"
+
+  is_active Boolean @default(true)
+
+  display_order Int?
+
+  created_at DateTime @default(now())
+
+  created_by Int?
+
+  // Relations
+
+  service_requests service_request[]
+
+  @@index([size_code], map: "tire_size_code_idx")
+  @@index([is_active], map: "tire_size_active_idx")
+}
+
+model vmrs_Lookup {
+  vmrs_id          Int       @id @default(autoincrement())
+  vmrs_code        String    @db.VarChar(255)
+  labor_cost       Decimal?  @db.Decimal(10, 2)
+  part_cost        Decimal?  @db.Decimal(10, 2)
+  part_quantity    Int?
+  vmrs_description String?
+  created_at       DateTime  @default(now())
+  created_by       Int?
+  updated_at       DateTime?
+  updated_by       Int?
+
+  // Relation to workorders
+  workorders workorder_vmrs[]
+}
+
+model workorder {
+  workorder_id              Int       @id @default(autoincrement())
+  unit_number               String?   @db.VarChar(100)
+  service_request_id        Int
+  workorder_ref_id          String?   @db.VarChar(255)
+  workorder_description     String
+  workorder_assigned_date   DateTime
+  workorder_eta             DateTime
+  workorder_start_date      DateTime?
+  workorder_end_date        DateTime?
+  technician_name           String?   @db.VarChar(255)
+  technician_email          String?   @db.VarChar(50)
+  technician_phone          String?   @db.VarChar(20)
+  repair_type               String?   @db.VarChar(255)
+  actival_time_arrival      DateTime?
+  location                  String?   @db.VarChar(255)
+  sservice_state            String?   @db.VarChar(255)
+  serial_number             String?   @db.VarChar(255)
+  operating_hours           String?   @db.VarChar(255)
+  millage                   Int?
+  vmrs_data                 Json?
+  workorder_status          String?
+  workorder_warranty_status String?   @db.VarChar(255)
+  created_at                DateTime  @default(now())
+  created_by                Int?
+  updated_at                DateTime?
+  updated_by                Int?
+
+  service_request service_request @relation(fields: [service_request_id], references: [service_request_id])
+  created_by_user user?           @relation(fields: [created_by], references: [user_id])
+
+  ers ers[]
+
+  workorder_has_attachment workorder_has_attachment[]
+  // Relation to VMRS codes
+  vmrsCodes                workorder_vmrs[]
+  Invoice                  Invoice[]
+
+  //for global search
+  @@index([workorder_ref_id], map: "workorder_ref_id_bidx1")
+}
+
+model workorder_vmrs {
+  workorder_id          Int
+  vmrs_id               Int
+  workorder_part_cost   Decimal?
+  workorder_labour_cost Decimal?
+  workorder_totalCost   Decimal?
+  part_description      String?
+  line                  Int?
+  is_billable           Boolean   @default(false)
+  created_at            DateTime  @default(now())
+  created_by            Int?
+  updated_at            DateTime?
+  updated_by            Int?
+
+  // Relations
+  workorder   workorder   @relation(fields: [workorder_id], references: [workorder_id])
+  vmrs_Lookup vmrs_Lookup @relation(fields: [vmrs_id], references: [vmrs_id])
+
+  @@id([workorder_id, vmrs_id]) // Composite PK to avoid duplicates
+}
+
+model workorder_has_attachment {
+  workorder_has_attachment_id BigInt    @id @default(autoincrement())
+  workorder_id                Int
+  attachment_id               BigInt    @unique
+  date_uploaded               DateTime?
+  expiration_date             DateTime?
+  created_at                  DateTime  @default(now())
+  created_by                  Int?
+
+  attachment_ref attachment @relation(fields: [attachment_id], references: [attachment_id])
+  workorder_ref  workorder  @relation(fields: [workorder_id], references: [workorder_id])
+
+  @@index([workorder_has_attachment_id], map: "workorder_has_attachment_id_idx1")
+  @@index([workorder_id], map: "workorder_has_attachment_equipment_id_bidx1")
+  @@index([attachment_id], map: "workorder_has_attachment_attachment_id_bidx1")
+}
+
+model ers {
+  ers_id                      Int       @id @default(autoincrement())
+  service_request_id          Int
+  iot_device_vendor_lookup_id Int
+  workorder_id                Int       @default(2)
+  ers_ref_id                  String?   @db.VarChar(255)
+  ers_description             String
+  ers_assigned_date           DateTime
+  ers_eta                     DateTime
+  ers_start_date              DateTime?
+  ers_end_date                DateTime?
+  technician_name             String?   @db.VarChar(255)
+  technician_email            String?   @db.VarChar(50)
+  technician_phone            String?   @db.VarChar(20)
+  technician_notes            String?
+  driver_notes                String?
+  resolution_notes            String?
+  resolved_date               DateTime?
+  repair_type                 String?   @db.VarChar(255)
+  actival_time_arrival        DateTime?
+  time_of_incident            DateTime?
+  location                    String?   @db.VarChar(255)
+  address                     String?
+  address_latitude            Decimal?
+  address_longitude           Decimal?
+  location_description        String?
+  request_info                String?   @db.VarChar(255) //newly added 
+  serial_number               String?   @db.VarChar(255)
+  operating_hours             String?   @db.VarChar(255)
+  ers_service_level           String?   @db.VarChar(255)
+  ers_status                  String?
+  ers_warranty_status         String?   @db.VarChar(255)
+  created_at                  DateTime  @default(now())
+  created_by                  Int?
+  updated_at                  DateTime?
+  updated_by                  Int?
+
+  service_request       service_request           @relation(fields: [service_request_id], references: [service_request_id])
+  created_by_user       user?                     @relation("ERSCreatedBy", fields: [created_by], references: [user_id])
+  updated_by_user       user?                     @relation("ERSUpdatedBy", fields: [updated_by], references: [user_id])
+  iot_device_vendor_ref iot_device_vendor_lookup? @relation(fields: [iot_device_vendor_lookup_id], references: [iot_device_vendor_lookup_id])
+  ers_parts_used        ers_parts_used[]
+  ers_has_attachment    ers_has_attachment[]
+  workorder             workorder?                @relation(fields: [workorder_id], references: [workorder_id])
+  communication_log     communication_log[]
+
+  //for global search
+  @@index([ers_ref_id], map: "ers_ref_id_bidx1")
+}
+
+model ers_parts_used {
+  ers_parts_id          Int       @id @default(autoincrement())
+  ers_id                Int
+  part_name             String    @db.VarChar(255)
+  part_quantity         Int
+  part_cost             Decimal?  @db.Decimal(10, 2)
+  ers_parts_description String?
+  is_billable           Boolean   @default(false)
+  created_at            DateTime  @default(now())
+  created_by            Int?
+  updated_at            DateTime?
+  updated_by            Int?
+  ers                   ers       @relation(fields: [ers_id], references: [ers_id])
+}
+
+model ers_has_attachment {
+  ers_has_attachment_id BigInt    @id @default(autoincrement())
+  ers_id                Int
+  attachment_id         BigInt    @unique
+  date_uploaded         DateTime?
+  expiration_date       DateTime?
+  created_at            DateTime  @default(now())
+  created_by            Int?
+
+  attachment_ref attachment @relation(fields: [attachment_id], references: [attachment_id])
+
+  ers_ref ers @relation(fields: [ers_id], references: [ers_id])
+
+  @@index([ers_has_attachment_id], map: "ers_has_attachment_id_idx1")
+  @@index([ers_id], map: "ers_has_attachment_equipment_id_bidx1")
+  @@index([attachment_id], map: "ers_has_attachment_attachment_id_bidx1")
+}
+
+model communication_log {
+  communication_id      Int       @id @default(autoincrement())
+  ers_id                Int
+  vendor_name           String?   @db.VarChar(255)
+  driver_name           String?   @db.VarChar(255)
+  communication_type    String?   @db.VarChar(255)
+  ers_parts_description String?
+  created_at            DateTime  @default(now())
+  created_by            Int?
+  updated_at            DateTime?
+  updated_by            Int?
+  ers                   ers       @relation(fields: [ers_id], references: [ers_id])
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model spatial_ref_sys {
+  srid      Int     @id
+  auth_name String? @db.VarChar(256)
+  auth_srid Int?
+  srtext    String? @db.VarChar(2048)
+  proj4text String? @db.VarChar(2048)
+}
+
+model global_search_view {
+  id          Int
+  type        String
+  title       String?
+  subtitle    String?
+  description String?
+  route       String?
+
+  @@id([id, type])
+  @@map("global_search_view")
+}
+
+model Invoice {
+  id                  Int         @id @default(autoincrement())
+  invoiceNumber       String      @unique
+  invoice_po          String?     @unique
+  payment_terms       String?     @db.VarChar(255)
+  date                DateTime
+  dueDate             DateTime
+  billingPeriod_start DateTime
+  billingPeriod_end   DateTime
+  billingAddress      String
+  contactInfo         String
+  taxId               String
+  invoiceType         InvoiceType @default(Misc)
+
+  // Description section
+  description String
+  quantity    Int
+  rate        Float
+
+  // Financials
+  subTotal              Float
+  taxes                 Float
+  discounts             Float
+  credits               Float
+  totalAmount           Float
+  other_charges         Decimal?
+  shop_supplies_charges Decimal?
+  amountPaid            Float
+  balanceDue            Float
+  status                String?  @default("ACTIVE")
+  currency_type         String?
+
+  // Relations
+  paymetInvoices    PaymentInvoice[]
+  invoiceItems      Invoice_Items[]
+  currency_lookup   currency_lookup?   @relation(fields: [currency_type], references: [currencytype])
+  invoiceEquipments InvoiceEquipment[]
+
+  // Credit invoice relations
+  credits_given_for_this_invoice credit_invoice[]           @relation("CreditForOriginalInvoice")
+  credit_usage                   credit_invoice_has_usage[] @relation("CreditInvoiceHasUsage")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  workorder_id Int?
+  workorder    workorder? @relation(fields: [workorder_id], references: [workorder_id])
+
+  account_id          Int
+  account             account              @relation(fields: [account_id], references: [account_id], onDelete: Cascade)
+  simple_field_lookup simple_field_lookup? @relation("invoice_status_relation", fields: [status], references: [field_code])
+}
+
+model Invoice_Items {
+  id               Int      @id @default(autoincrement())
+  invoice_id       Int
+  item_description String
+  quantity         Int
+  rate             Float
+  amount           Float
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  invoice Invoice @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  paymentId     String   @unique
+  paymentDate   DateTime
+  paymentMethod String // Credit Card, Bank Transfer, etc.
+  payerName     String
+  payerEntity   String?
+  status        String?  @default("ACTIVE")
+  currency_type String?
+
+  // Relations
+  paymentInvoices PaymentInvoice[]
+  currency_lookup currency_lookup? @relation(fields: [currency_type], references: [currencytype])
+
+  // Payment summary
+  invoicePayments Int
+  invoiceCredits  Int
+  paymentAmount   Float
+
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  account_id          Int
+  account             account              @relation(fields: [account_id], references: [account_id], onDelete: Cascade)
+  simple_field_lookup simple_field_lookup? @relation("payment_status_relation", fields: [status], references: [field_code])
+}
+
+// Join table for many-to-many relationship between Payment and Invoice
+model PaymentInvoice {
+  id         Int     @id @default(autoincrement())
+  paymentId  Int
+  invoiceId  Int
+  payment    Payment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  invoice    Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  account_id Int
+  account    account @relation(fields: [account_id], references: [account_id], onDelete: Cascade)
+
+  @@unique([paymentId, invoiceId])
+}
+
+// Join table for many-to-many relationship between Invoice and Equipment
+model InvoiceEquipment {
+  id           Int       @id @default(autoincrement())
+  invoice_id   Int
+  equipment_id Int
+  invoice      Invoice   @relation(fields: [invoice_id], references: [id], onDelete: Cascade)
+  equipment    equipment @relation(fields: [equipment_id], references: [equipment_id], onDelete: Cascade)
+  createdAt    DateTime  @default(now())
+
+  @@unique([invoice_id, equipment_id])
+}
+
+model currency_lookup {
+  currency_lookup_id Int      @id @default(autoincrement())
+  currencytype       String   @unique @db.VarChar(10)
+  description        String   @db.VarChar(255)
+  currency_code      String   @unique @db.VarChar(3)
+  is_deleted         Boolean  @default(false)
+  created_at         DateTime @default(now())
+
+  // Relations
+  payments Payment[]
+  invoices Invoice[]
+  accounts account[]
+
+  @@index([currency_lookup_id], map: "currency_lookup_id_idx1")
+  @@index([currencytype], map: "currency_lookup_type_idx1")
+  @@index([currency_code], map: "currency_lookup_code_idx1")
+}
+
+enum AccountType {
+  NATIONAL
+  REGIONAL
+}
+
+model credit_invoice {
+  credit_invoice_id     Int      @id @default(autoincrement())
+  credit_invoice_number String   @unique @db.VarChar(50)
+  credit_date           DateTime @default(now())
+  credit_amount         Float // The discount/bonus amount (positive value)
+  credit_type           String?  @db.VarChar(50) // "DISCOUNT", "BONUS", etc.
+  reason                String?  @db.VarChar(500) // Reason for giving credit
+  status                String   @default("ACTIVE") @db.VarChar(20) // "ACTIVE", "USED", "EXPIRED", "CANCELLED"
+
+  // Original invoice for which credit was given
+  original_invoice_id Int
+  original_invoice    Invoice @relation("CreditForOriginalInvoice", fields: [original_invoice_id], references: [id])
+
+  // Account the credit belongs to
+  account_id Int
+  account    account @relation(fields: [account_id], references: [account_id], onDelete: Cascade)
+
+  // Admin who created the credit
+  created_by      Int?
+  created_by_user user? @relation("CreditCreatedBy", fields: [created_by], references: [user_id])
+
+  // Expiration date (optional)
+  expires_at DateTime?
+
+  // Audit fields
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  status_lookup simple_field_lookup?       @relation("credit_invoice_status_relation", fields: [status], references: [field_code])
+  credit_usage  credit_invoice_has_usage[]
+
+  @@index([credit_invoice_number], map: "credit_invoice_number_idx")
+  @@index([account_id], map: "credit_invoice_account_idx")
+  @@index([original_invoice_id], map: "credit_invoice_original_idx")
+  @@index([status], map: "credit_invoice_status_idx")
+  @@index([credit_date], map: "credit_invoice_date_idx")
+  @@index([expires_at], map: "credit_invoice_expires_idx")
+}
+
+// Junction table for many-to-many relationship between credit_invoice and Invoice (usage tracking)
+model credit_invoice_has_usage {
+  credit_invoice_has_usage_id Int      @id @default(autoincrement())
+  credit_invoice_id           Int
+  invoice_id                  Int
+  amount_used                 Float // Amount of credit used for this specific invoice
+  used_at                     DateTime @default(now())
+  used_by                     Int?
+
+  // Relations
+  credit_invoice credit_invoice @relation(fields: [credit_invoice_id], references: [credit_invoice_id], onDelete: Cascade)
+  invoice        Invoice        @relation("CreditInvoiceHasUsage", fields: [invoice_id], references: [id], onDelete: Cascade)
+  used_by_user   user?          @relation("CreditInvoiceUsedBy", fields: [used_by], references: [user_id])
+
+  @@unique([credit_invoice_id, invoice_id]) // Prevent duplicate usage for same credit-invoice combination
+  @@index([credit_invoice_id], map: "credit_invoice_has_usage_credit_idx")
+  @@index([invoice_id], map: "credit_invoice_has_usage_invoice_idx")
+  @@index([used_at], map: "credit_invoice_has_usage_date_idx")
+}
+
+enum InvoiceType {
+  Lease
+  Rent
+  PM
+  ERS
+  Misc
+}
