@@ -96,4 +96,51 @@ jobs:
         if: ${{ github.event.inputs.rollback_tag == '' }}
         run: |
           IMAGE_TAG=$(date +%Y%m%d%H%M%S)
-          e
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          docker build -t $ECR_REPO:$IMAGE_TAG .
+          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
+
+      - name: Push Docker image to ECR
+        if: ${{ github.event.inputs.rollback_tag == '' }}
+        run: |
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:${{ env.IMAGE_TAG }}
+
+      - name: Use rollback image tag
+        if: ${{ github.event.inputs.rollback_tag != '' }}
+        run: |
+          echo "IMAGE_TAG=${{ github.event.inputs.rollback_tag }}" >> $GITHUB_ENV
+          echo "⚙️ Rollback mode: Using image tag ${{ github.event.inputs.rollback_tag }}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.9.5
+
+      - name: Terraform Init with environment-specific backend
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          BACKEND_KEY="ecs-app/${{ matrix.env }}/terraform.tfstate"
+          terraform init -upgrade \
+            -backend-config="bucket=${{ env.S3_BUCKET }}" \
+            -backend-config="key=$BACKEND_KEY" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}"
+
+      - name: Terraform Plan
+        working-directory: ${{ env.TF_DIR }}
+        run: |
+          terraform plan \
+            -var "image_tag=${{ env.IMAGE_TAG }}" \
+            -var-file="${{ env.TFVARS_FILE }}" \
+            -out=tfplan
+
+      - name: Terraform Apply
+        working-directory: ${{ env.TF_DIR }}
+        run: terraform apply -auto-approve tfplan
+
+      - name: Verify ECS Service
+        run: |
+          CLUSTER=$(grep '^ecs_cluster' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          SERVICE=$(grep '^ecs_service' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE --region $AWS_REGION
+          echo "✅ ECS service $SERVICE in $CLUSTER is stable for $ENVIRONMENT"
