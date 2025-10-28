@@ -56,6 +56,27 @@ jobs:
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
+      - name: Fetch secrets from AWS Secrets Manager
+        id: fetch-secrets
+        run: |
+          SECRET_VALUE=$(aws secretsmanager get-secret-value \
+            --secret-id BE_Nextgen_Secreats \
+            --query SecretString \
+            --output text)
+
+          if [ -z "$SECRET_VALUE" ]; then
+            echo "❌ No secret value found!"
+            exit 1
+          fi
+
+          echo "$SECRET_VALUE" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
+          echo "✅ Secrets saved to .env"
+      - name: ✅ Load env vars from .env
+        run: |
+          set -o allexport
+          source .env
+          set +o allexport
+
 
       - name: Build Docker image
         if: ${{ github.event.inputs.rollback_tag == '' }}
