@@ -147,35 +147,44 @@ jobs:
         run: terraform apply -auto-approve tfplan-${{ matrix.env }}
       - name: Update ECS Task Definition image
         run: |
-          # Extract cluster and service from tfvars
+          # Verify TFVARS_FILE exists
+          if [ ! -f "$TFVARS_FILE" ]; then
+            echo "❌ ERROR: TFVARS_FILE '$TFVARS_FILE' not found!"
+            exit 1
+          fi
+
+          # Extract ECS cluster and service names (robust parsing)
           CLUSTER=$(grep 'ecs_cluster' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
           SERVICE=$(grep 'ecs_service' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
 
+          echo "Cluster: '$CLUSTER'"
+          echo "Service: '$SERVICE'"
 
+          if [ -z "$CLUSTER" ] || [ -z "$SERVICE" ]; then
+            echo "❌ ERROR: Cluster or Service name is empty. Check TFVARS_FILE contents."
+            exit 1
+          fi
 
-          
+          # Get current task definition ARN
+          TASK_DEF=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query 'services[0].taskDefinition' --output text)
+          echo "Current Task Definition: $TASK_DEF"
 
-          # Get current task definition
-          TASK_DEF=$(aws ecs describe-services --cluster $CLUSTER --services $SERVICE --query 'services[0].taskDefinition' --output text)
+          # Create updated task definition JSON with new image
+          UPDATED_JSON=$(aws ecs describe-task-definition --task-definition "$TASK_DEF" \
+            | jq -c --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG" \
+              '.taskDefinition
+              | .containerDefinitions[0].image=$IMAGE
+              | del(.taskDefinitionArn, .revision, .status, .registeredBy, .registeredAt)')
 
-          # Generate new task definition JSON with updated image
-          UPDATED_JSON=$(aws ecs describe-task-definition --task-definition $TASK_DEF \
-            | jq -c --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}" \
-              '.taskDefinition | .containerDefinitions[0].image=$IMAGE | del(.taskDefinitionArn, .revision, .status, .registeredBy, .registeredAt)')
-
-          # Optional: debug output to verify JSON
-          echo "Debug: new task definition JSON"
-          echo "$UPDATED_JSON"
+          # Debug: write to file to ensure full JSON
+          echo "$UPDATED_JSON" > new-task-def.json
+          echo "✅ Generated new task definition JSON"
 
           # Register new task definition revision
-          NEW_TASK_DEF=$(echo "$UPDATED_JSON" \
-            | aws ecs register-task-definition --cli-input-json file:///dev/stdin \
+          NEW_TASK_DEF=$(aws ecs register-task-definition --cli-input-json file://new-task-def.json \
             --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "New Task Definition ARN: $NEW_TASK_DEF"
 
-          # Update ECS service to use the new task definition revision
-          aws ecs update-service --cluster $CLUSTER --service $SERVICE --task-definition $NEW_TASK_DEF
-
-          echo "✅ Updated ECS service $SERVICE with new image tag: ${{ env.IMAGE_TAG }}"
-
-
-
+          # Update ECS service to use new task definition revision
+          aws ecs update-service --cluster "$CLUSTER" --service "$SERVICE" --task-definition "$NEW_TASK_DEF"
+          echo "✅ Updated ECS service $SERVICE with new image tag: $IMAGE_TAG"
