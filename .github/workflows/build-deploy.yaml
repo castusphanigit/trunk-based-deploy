@@ -69,14 +69,12 @@ jobs:
           role-session-name: github-actions
 
       - name: Set environment context
-        run: |
-          echo "ENVIRONMENT=${{ matrix.env }}" >> $GITHUB_ENV
-          echo "TFVARS_FILE=${{ env.TF_DIR }}/${{ matrix.env }}.tfvars" >> $GITHUB_ENV
+        run: echo "ENVIRONMENT=${{ matrix.env }}" >> $GITHUB_ENV
 
       - name: Parse ECR repo from tfvars
         id: parse
         run: |
-          ECR_REPO=$(grep '^ecr_repo' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          ECR_REPO=$(grep '^ecr_repo' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
 
       - name: Fetch secrets from AWS Secrets Manager
@@ -141,7 +139,7 @@ jobs:
         run: |
           terraform plan \
             -var "image_tag=${{ env.IMAGE_TAG }}" \
-            -var-file="${{ env.TFVARS_FILE }}" \
+            -var-file="${{ matrix.env }}.tfvars" \
             -out=tfplan-${{ matrix.env }}
 
       - name: Terraform Apply
@@ -150,7 +148,7 @@ jobs:
 
       - name: Verify ECS Service
         run: |
-          CLUSTER=$(grep '^ecs_cluster' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
-          SERVICE=$(grep '^ecs_service' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
-          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE
+          CLUSTER=$(grep '^ecs_cluster' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
+          SERVICE=$(grep '^ecs_service' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
+          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE --region $AWS_REGION
           echo "✅ ECS service $SERVICE is stable in cluster $CLUSTER"
