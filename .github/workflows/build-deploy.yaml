@@ -148,8 +148,10 @@ jobs:
       - name: Update ECS Task Definition image
         run: |
           # Extract cluster and service from tfvars
-          CLUSTER=$(grep 'ecs_cluster' "${{ env.TFVARS_FILE }}" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d ' ')
-          SERVICE=$(grep 'ecs_service' "${{ env.TFVARS_FILE }}" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d ' ')
+          CLUSTER=$(grep 'ecs_cluster' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
+          SERVICE=$(grep 'ecs_service' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
+
+
 
           
 
