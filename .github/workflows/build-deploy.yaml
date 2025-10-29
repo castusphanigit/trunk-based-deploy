@@ -61,7 +61,7 @@ jobs:
       - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::194796551973:role/TEN-NextGen-Github-actions-role
+          role-to-assume: arn:aws:iam::593002333172:role/BE_Github_Actions
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Extract ECR repo from tfvars
@@ -118,7 +118,6 @@ jobs:
             -backend-config="bucket=${{ env.S3_BUCKET }}" \
             -backend-config="key=terraform/${{ matrix.env }}/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
             -reconfigure
 
       - name: Terraform Apply
