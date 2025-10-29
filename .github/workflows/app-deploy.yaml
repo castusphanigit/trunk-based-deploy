@@ -1,19 +1,12 @@
-name: Build and Deploy to ECS via Terraform (Trunk-Based)
+name: Build and Plan (PR Validation)
 
 on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
-    inputs:
-      rollback_tag:
-        description: "Rollback to a specific image tag (optional)"
-        required: false
-        default: ""
+  pull_request:
 
 permissions:
-  id-token: write
   contents: read
+  pull-requests: write
+  id-token: write
 
 env:
   AWS_REGION: ap-south-1
@@ -22,56 +15,52 @@ env:
   DYNAMODB_TABLE: terraform-locks
 
 jobs:
-  detect-envs:
-    name: Detect Environments
+  detect-environments:
+    name: Detect .tfvars Environments
     runs-on: ubuntu-latest
     outputs:
-      env-matrix: ${{ steps.set-matrix.outputs.matrix }}
+      env_list: ${{ steps.set.outputs.json_envs }}
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Detect .tfvars files
-        id: set-matrix
+        id: set
         run: |
-          MATRIX_ENVS=$(ls ${{ env.TF_DIR }}/*.tfvars 2>/dev/null | xargs -n1 basename | sed 's/.tfvars//g' | jq -R -s -c 'split("\n")[:-1]')
-          echo "matrix=$MATRIX_ENVS" >> $GITHUB_OUTPUT
+          cd ${{ env.TF_DIR }}
+          files=$(ls *.tfvars 2>/dev/null || true)
+          if [ -z "$files" ]; then
+            echo "json_envs=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          envs=()
+          for f in $files; do
+            envs+=("${f%.tfvars}")
+          done
+          json=$(printf '%s\n' "${envs[@]}" | jq -R . | jq -s -c .)
+          echo "json_envs=$json" >> "$GITHUB_OUTPUT"
 
-  build-deploy:
-    name: Build & Deploy ECS per Env
-    needs: detect-envs
+  build-and-plan:
+    name: Docker Build + Terraform Plan
+    needs: detect-environments
+    if: ${{ needs.detect-environments.outputs.env_list != '[]' }}
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        env: ${{fromJson(needs.detect-envs.outputs.env-matrix)}}
+        env: ${{ fromJson(needs.detect-environments.outputs.env_list) }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - name: Configure AWS credentials via OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::593002333172:role/BE_Github_Actions
+          role-to-assume: arn:aws:iam::194796551973:role/TEN-NextGen-Github-actions-role
           aws-region: ${{ env.AWS_REGION }}
-
-      - name: Set Environment Variables
-        run: |
-          echo "ENVIRONMENT=${{ matrix.env }}" >> $GITHUB_ENV
-          echo "TFVARS_FILE=${{ env.TF_DIR }}/${{ matrix.env }}.tfvars" >> $GITHUB_ENV
-
-      - name: Extract ECR repo and region from tfvars
-        id: parse
-        run: |
-          ECR_REPO=$(grep '^ecr_repo' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
-          REGION=$(grep '^region' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
-          echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
-          echo "AWS_REGION=$REGION" >> $GITHUB_ENV
-
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
       - name: Fetch secrets from AWS Secrets Manager
         id: fetch-secrets
         run: |
@@ -91,55 +80,64 @@ jobs:
           source .env
           set +o allexport
 
-      - name: Build Docker image
-        if: ${{ github.event.inputs.rollback_tag == '' }}
+      - name: Extract ECR repo from tfvars
+        id: parse
         run: |
-          IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+          ECR_REPO=$(grep '^ecr_repo' "${{ matrix.env }}.tfvars" | awk -F'=' '{print $2}' | tr -d ' "')
+          echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image (PR validation only)
+        run: |
+          IMAGE_TAG=pr-${{ github.event.pull_request.number }}-${{ github.run_number }}
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
           docker build -t $ECR_REPO:$IMAGE_TAG .
           docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
-
-      - name: Push Docker image to ECR
-        if: ${{ github.event.inputs.rollback_tag == '' }}
-        run: |
-          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:${{ env.IMAGE_TAG }}
-
-      - name: Use rollback image tag
-        if: ${{ github.event.inputs.rollback_tag != '' }}
-        run: |
-          echo "IMAGE_TAG=${{ github.event.inputs.rollback_tag }}" >> $GITHUB_ENV
-          echo "⚙️ Rollback mode: Using image tag ${{ github.event.inputs.rollback_tag }}"
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.5
+          terraform_version: 1.6.0
 
-      - name: Terraform Init with environment-specific backend
-        working-directory: ${{ env.TF_DIR }}
+      - name: Terraform Init
         run: |
-          BACKEND_KEY="ecs-app/${{ matrix.env }}/terraform.tfstate"
-          terraform init -upgrade \
+          terraform init \
             -backend-config="bucket=${{ env.S3_BUCKET }}" \
-            -backend-config="key=$BACKEND_KEY" \
+            -backend-config="key=terraform/${{ matrix.env }}/terraform.tfstate" \
             -backend-config="region=${{ env.AWS_REGION }}" \
-            -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}"
+            -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
+            -reconfigure
 
       - name: Terraform Plan
-        working-directory: ${{ env.TF_DIR }}
         run: |
           terraform plan \
+            -var-file="${{ matrix.env }}.tfvars" \
             -var "image_tag=${{ env.IMAGE_TAG }}" \
-            -var-file="${{ env.TFVARS_FILE }}" \
-            -out=tfplan
+            -out=tfplan-${{ matrix.env }}
+          terraform show -no-color tfplan-${{ matrix.env }} > plan-${{ matrix.env }}.txt
 
-      - name: Terraform Apply
-        working-directory: ${{ env.TF_DIR }}
-        run: terraform apply -auto-approve tfplan
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tfplan-${{ matrix.env }}
+          path: |
+            tfplan-${{ matrix.env }}
+            plan-${{ matrix.env }}.txt
 
-      - name: Verify ECS Service
-        run: |
-          CLUSTER=$(grep '^ecs_cluster' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
-          SERVICE=$(grep '^ecs_service' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
-          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE --region $AWS_REGION
-          echo "✅ ECS service $SERVICE in $CLUSTER is stable for $ENVIRONMENT"
+      - name: Post plan as PR comment
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const env = '${{ matrix.env }}';
+            const body = fs.readFileSync(`plan-${env}.txt`, 'utf8').slice(0, 64000);
+            const pr = context.payload.pull_request.number;
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: pr,
+              body: `### Terraform plan for **${env}**\n\n\`\`\`\n${body}\n\`\`\``
+            });
