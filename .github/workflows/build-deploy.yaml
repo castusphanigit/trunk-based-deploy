@@ -20,7 +20,7 @@ env:
   AWS_REGION: ap-south-1
   TF_DIR: terraform
   S3_BUCKET: ten-terraform-statefile
-
+  TFVARS_FILE: terraform/dev.tfvars
 jobs:
   detect-environments:
     name: Detect .tfvars Environments
