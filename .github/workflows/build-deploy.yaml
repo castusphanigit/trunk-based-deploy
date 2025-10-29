@@ -1,0 +1,135 @@
+name: Build and Deploy ECS via Terraform
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      rollback_tag:
+        description: "Rollback to specific image tag (optional)"
+        required: false
+        default: ""
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-south-1
+  TF_DIR: terraform
+  S3_BUCKET: ten-terraform-statefile
+  DYNAMODB_TABLE: terraform-locks
+
+
+jobs:
+  detect-environments:
+    name: Detect .tfvars Environments
+    runs-on: ubuntu-latest
+    outputs:
+      env_list: ${{ steps.set.outputs.json_envs }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Detect .tfvars files
+        id: set
+        run: |
+          cd ${{ env.TF_DIR }}
+          files=$(ls *.tfvars 2>/dev/null || true)
+          envs=()
+          for f in $files; do
+            envs+=("${f%.tfvars}")
+          done
+          json=$(printf '%s\n' "${envs[@]}" | jq -R . | jq -s -c .)
+          echo "json_envs=$json" >> "$GITHUB_OUTPUT"
+
+  build-and-deploy:
+    name: Build & Deploy ECS
+    needs: detect-environments
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: ${{ fromJson(needs.detect-environments.outputs.env_list) }}
+    defaults:
+      run:
+        working-directory: ${{ env.TF_DIR }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::194796551973:role/TEN-NextGen-Github-actions-role
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Extract ECR repo from tfvars
+        id: parse
+        run: |
+          ECR_REPO=$(grep '^ecr_repo' "${{ matrix.env }}.tfvars" | awk -F'=' '{print $2}' | tr -d ' "')
+          echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
+      - name: Fetch secrets from AWS Secrets Manager
+        id: fetch-secrets
+        run: |
+          SECRET_VALUE=$(aws secretsmanager get-secret-value \
+            --secret-id BE_Nextgen_Secreats \
+            --query SecretString \
+            --output text)
+          if [ -z "$SECRET_VALUE" ]; then
+            echo "❌ No secret value found!"
+            exit 1
+          fi
+          echo "$SECRET_VALUE" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
+
+      - name: Load env vars from .env
+        run: |
+          set -o allexport
+          source .env
+          set +o allexport
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Docker image
+        if: ${{ github.event.inputs.rollback_tag == '' }}
+        run: |
+          IMAGE_TAG=$(date +%Y%m%d%H%M%S)
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          docker build -t $ECR_REPO:$IMAGE_TAG .
+          docker tag $ECR_REPO:$IMAGE_TAG ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
+          docker push ${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG
+
+      - name: Rollback image tag
+        if: ${{ github.event.inputs.rollback_tag != '' }}
+        run: |
+          echo "IMAGE_TAG=${{ github.event.inputs.rollback_tag }}" >> $GITHUB_ENV
+          echo "⚙️ Rollback mode active — using image tag ${{ github.event.inputs.rollback_tag }}"
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.0
+
+      - name: Terraform Init
+        run: |
+          terraform init \
+            -backend-config="bucket=${{ env.S3_BUCKET }}" \
+            -backend-config="key=terraform/${{ matrix.env }}/terraform.tfstate" \
+            -backend-config="region=${{ env.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ env.DYNAMODB_TABLE }}" \
+            -reconfigure
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var-file="${{ matrix.env }}.tfvars" \
+            -var "image_tag=${{ env.IMAGE_TAG }}"
+
+      - name: Verify ECS Deployment
+        run: |
+          CLUSTER=$(grep '^ecs_cluster' "${{ matrix.env }}.tfvars" | awk -F'=' '{print $2}' | tr -d ' "')
+          SERVICE=$(grep '^ecs_service' "${{ matrix.env }}.tfvars" | awk -F'=' '{print $2}' | tr -d ' "')
+          aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE" --region "$AWS_REGION"
+          echo "✅ ECS service $SERVICE in $CLUSTER is stable for ${{ matrix.env }}"
