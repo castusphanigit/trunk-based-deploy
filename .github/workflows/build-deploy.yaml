@@ -153,7 +153,7 @@ jobs:
             exit 1
           fi
 
-          # Extract ECS cluster and service names (robust parsing)
+          # Extract ECS cluster and service names
           CLUSTER=$(grep 'ecs_cluster' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
           SERVICE=$(grep 'ecs_service' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
 
@@ -169,14 +169,14 @@ jobs:
           TASK_DEF=$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --query 'services[0].taskDefinition' --output text)
           echo "Current Task Definition: $TASK_DEF"
 
-          # Create updated task definition JSON with new image
+          # Create updated task definition JSON with new image and remove invalid fields
           UPDATED_JSON=$(aws ecs describe-task-definition --task-definition "$TASK_DEF" \
             | jq -c --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/$ECR_REPO:$IMAGE_TAG" \
               '.taskDefinition
               | .containerDefinitions[0].image=$IMAGE
-              | del(.taskDefinitionArn, .revision, .status, .registeredBy, .registeredAt)')
+              | del(.taskDefinitionArn, .revision, .status, .registeredBy, .registeredAt, .requiresAttributes, .compatibilities)')
 
-          # Debug: write to file to ensure full JSON
+          # Save JSON to file
           echo "$UPDATED_JSON" > new-task-def.json
           echo "✅ Generated new task definition JSON"
 
