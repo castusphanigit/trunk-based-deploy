@@ -3,6 +3,10 @@ variable "region" {
   description = "AWS region"
 }
 
+variable "env" {
+  type        = string
+  description = "AWS region"
+}
 variable "ecs_cluster" {
   type        = string
   description = "ECS cluster name"
