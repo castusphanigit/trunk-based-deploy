@@ -1,0 +1,6 @@
+region       = "ap-south-1"
+ecs_cluster  = "trunk-based-deploy"
+ecs_service  = "trunk-based-deploy-task-service-pohrnpsg"
+ecr_repo     = "trunk-based-deploy"
+task_family  = "trunk-based-deploy-task"
+env = "uat"

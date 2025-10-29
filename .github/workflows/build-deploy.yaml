@@ -21,6 +21,7 @@ env:
   TF_DIR: terraform
   S3_BUCKET: ten-terraform-statefile
   TFVARS_FILE: terraform/dev.tfvars
+
 jobs:
   detect-environments:
     name: Detect .tfvars Environments
@@ -57,6 +58,9 @@ jobs:
       matrix:
         env: ${{ fromJson(needs.detect-environments.outputs.env_list) }}
 
+    # Conditionally assign environment for UAT/Prod (manual approval)
+    environment: ${{ matrix.env == 'uat' || matrix.env == 'prod' && matrix.env || 'none' }}
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -74,7 +78,12 @@ jobs:
       - name: Parse ECR repo from tfvars
         id: parse
         run: |
-          ECR_REPO=$(grep '^ecr_repo' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
+          TFVARS_FILE="${{ env.TF_DIR }}/${{ matrix.env }}.tfvars"
+          if [ ! -f "$TFVARS_FILE" ]; then
+            echo "❌ ERROR: TFVARS_FILE '$TFVARS_FILE' not found!"
+            exit 1
+          fi
+          ECR_REPO=$(grep '^ecr_repo' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
 
       - name: Fetch secrets from AWS Secrets Manager
@@ -142,12 +151,19 @@ jobs:
             -var-file="${{ matrix.env }}.tfvars" \
             -out=tfplan-${{ matrix.env }}
 
-      - name: Terraform Apply
+      - name: Terraform Apply (Auto for Dev)
         working-directory: ${{ env.TF_DIR }}
+        if: ${{ matrix.env == 'dev' || matrix.env == 'qa'}}
         run: terraform apply -auto-approve tfplan-${{ matrix.env }}
+
+      - name: Terraform Apply (Manual Approval for UAT/Prod)
+        working-directory: ${{ env.TF_DIR }}
+        if: ${{ matrix.env == 'uat' || matrix.env == 'prod' }}
+        run: terraform apply tfplan-${{ matrix.env }}
+
       - name: Update ECS Task Definition image
         run: |
-          # Verify TFVARS_FILE exists
+          TFVARS_FILE="${{ env.TF_DIR }}/${{ matrix.env }}.tfvars"
           if [ ! -f "$TFVARS_FILE" ]; then
             echo "❌ ERROR: TFVARS_FILE '$TFVARS_FILE' not found!"
             exit 1
