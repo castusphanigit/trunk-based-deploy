@@ -145,10 +145,23 @@ jobs:
       - name: Terraform Apply
         working-directory: ${{ env.TF_DIR }}
         run: terraform apply -auto-approve tfplan-${{ matrix.env }}
-
-      - name: Verify ECS Service
+      - name: Update ECS Task Definition image
         run: |
-          CLUSTER=$(grep '^ecs_cluster' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
-          SERVICE=$(grep '^ecs_service' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
-          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE --region $AWS_REGION
-          echo "✅ ECS service $SERVICE is stable in cluster $CLUSTER"
+          CLUSTER=$(grep '^ecs_cluster' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          SERVICE=$(grep '^ecs_service' ${{ env.TFVARS_FILE }} | awk -F'=' '{print $2}' | tr -d ' "')
+          TASK_DEF=$(aws ecs describe-services --cluster $CLUSTER --services $SERVICE --query 'services[0].taskDefinition' --output text)
+
+          # Create new task definition revision with updated image tag
+          NEW_TASK_DEF=$(aws ecs describe-task-definition --task-definition $TASK_DEF \
+            | jq --arg IMAGE "${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPO }}:${{ env.IMAGE_TAG }}" \
+              '.taskDefinition | 
+              .containerDefinitions[0].image=$IMAGE |
+              del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredBy, .registeredAt)' \
+            | aws ecs register-task-definition --cli-input-json file:///dev/stdin \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+
+          # Update the ECS service to use the new revision
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE --task-definition $NEW_TASK_DEF
+          echo "✅ Updated ECS service $SERVICE with new image tag: ${{ env.IMAGE_TAG }}"
+
+
