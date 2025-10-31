@@ -86,19 +86,16 @@ jobs:
         id: read_secret_id
         run: |
           SECRET_ID=$(grep 'secret_id' terraform/variables.tfvars | sed 's/.*= *"//;s/"//')
-          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPU
+          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
 
-      - name: Fetch secrets from AWS Secrets Manager
-        id: fetch-secrets
+      - name: Fetch secret from AWS Secrets Manager
+        id: fetch_secret
         run: |
           SECRET_VALUE=$(aws secretsmanager get-secret-value \
             --secret-id ${{ steps.read_secret_id.outputs.secret_id }} \
             --query SecretString \
             --output text)
-          if [ -z "$SECRET_VALUE" ]; then
-            echo "❌ No secret value found!"
-            exit 1
-          fi
+          echo "Secret value: $SECRET_VALUE"
           echo "$SECRET_VALUE" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
           echo "✅ Secrets saved to .env"
 
