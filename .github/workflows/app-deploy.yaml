@@ -83,7 +83,7 @@ jobs:
           ECR_REPO=$(grep '^ecr_repo' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
       - name: Read secret ID from tfvars
-        id: read_secret
+        id: read_secret_id
         run: |
           SECRET_ID=$(grep 'secret_id' terraform/variables.tfvars | sed 's/.*= *"//;s/"//')
           echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPU
@@ -92,7 +92,7 @@ jobs:
         id: fetch-secrets
         run: |
           SECRET_VALUE=$(aws secretsmanager get-secret-value \
-            --secret-id ${{ steps.read_secret.outputs.secret_id }} \
+            --secret-id ${{ steps.read_secret_id.outputs.secret_id }} \
             --query SecretString \
             --output text)
           if [ -z "$SECRET_VALUE" ]; then
