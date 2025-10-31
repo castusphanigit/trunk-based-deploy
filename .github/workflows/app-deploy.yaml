@@ -21,6 +21,7 @@ env:
   TF_DIR: terraform
   S3_BUCKET: ten-terraform-statefile
   TFVARS_FILE: terraform/dev.tfvars
+  SECRET_ID: ${{ vars.SECRET_ID }}
 jobs:
   detect-environments:
     name: Detect .tfvars Environments
@@ -82,17 +83,11 @@ jobs:
         run: |
           ECR_REPO=$(grep '^ecr_repo' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
-      - name: Read secret ID from tfvars
-        id: read_secret_id
-        run: |
-          SECRET_ID=$(grep 'secret_id' terraform/variables.tfvars | sed 's/.*= *"//;s/"//')
-          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
-
       - name: Fetch secret from AWS Secrets Manager
         id: fetch_secret
         run: |
           SECRET_VALUE=$(aws secretsmanager get-secret-value \
-            --secret-id ${{ steps.read_secret_id.outputs.secret_id }} \
+            --secret-id $SECRET_ID \
             --query SecretString \
             --output text)
           echo "Secret value: $SECRET_VALUE"
