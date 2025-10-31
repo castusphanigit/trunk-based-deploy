@@ -85,15 +85,19 @@ jobs:
           fi
           ECR_REPO=$(grep '^ecr_repo' "$TFVARS_FILE" | sed 's/.*= *"\?\(.*\)"\?/\1/' | tr -d '[:space:]"')
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
-
-      - name: Fetch secrets from AWS Secrets Manager
-        id: fetch-secrets
+      - name: Read secret ID from tfvars
+        id: read_secret_id
         run: |
-          echo "🔐 Fetching secret from AWS Secrets Manager: $SECRET_ID"
+          SECRET_ID=$(grep 'secret_id' $TFVARS_FILE | sed 's/.*= *"//;s/"//')
+          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPUT
+
+      - name: Fetch secret from AWS Secrets Manager
+        run: |
           SECRET_VALUE=$(aws secretsmanager get-secret-value \
-            --secret-id "$SECRET_ID" \
+            --secret-id ${{ steps.read_secret_id.outputs.secret_id }} \
             --query SecretString \
             --output text)
+          echo "Fetched secret value: $SECRET_VALUE"
           if [ -z "$SECRET_VALUE" ]; then
             echo "❌ No secret value found for $SECRET_ID!"
             exit 1
