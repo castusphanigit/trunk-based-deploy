@@ -89,12 +89,13 @@ jobs:
       - name: Fetch secrets from AWS Secrets Manager
         id: fetch-secrets
         run: |
+          echo "🔐 Fetching secret from AWS Secrets Manager: $SECRET_ID"
           SECRET_VALUE=$(aws secretsmanager get-secret-value \
-            --secret-id BE_Nextgen_Secreats \
+            --secret-id "$SECRET_ID" \
             --query SecretString \
             --output text)
           if [ -z "$SECRET_VALUE" ]; then
-            echo "❌ No secret value found!"
+            echo "❌ No secret value found for $SECRET_ID!"
             exit 1
           fi
           echo "$SECRET_VALUE" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
