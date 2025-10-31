@@ -1,7 +1,7 @@
 name: Build & Deploy to ECS via Terraform
 
 on:
-  push:
+  pull_request:
     branches:
       - main
   workflow_dispatch:
@@ -21,6 +21,7 @@ env:
   TF_DIR: terraform
   S3_BUCKET: ten-terraform-statefile
   TFVARS_FILE: terraform/dev.tfvars
+  SECRET_ID: ${{ vars.SECRET_ID }}
 jobs:
   detect-environments:
     name: Detect .tfvars Environments
@@ -60,6 +61,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      
+      - name: Read secret ID from tfvars
+        id: read_secret
+        run: |
+          SECRET_ID=$(grep 'secret_id' terraform/variables.tfvars | sed 's/.*= *"//;s/"//')
+          echo "secret_id=$SECRET_ID" >> $GITHUB_OUTPU
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
@@ -76,18 +83,14 @@ jobs:
         run: |
           ECR_REPO=$(grep '^ecr_repo' ${{ env.TF_DIR }}/${{ matrix.env }}.tfvars | awk -F'=' '{print $2}' | tr -d ' "')
           echo "ECR_REPO=$ECR_REPO" >> $GITHUB_ENV
-
-      - name: Fetch secrets from AWS Secrets Manager
-        id: fetch-secrets
+      - name: Fetch secret from AWS Secrets Manager
+        id: fetch_secret
         run: |
           SECRET_VALUE=$(aws secretsmanager get-secret-value \
-            --secret-id BE_Nextgen_Secreats \
+            --secret-id $SECRET_ID \
             --query SecretString \
             --output text)
-          if [ -z "$SECRET_VALUE" ]; then
-            echo "❌ No secret value found!"
-            exit 1
-          fi
+          echo "Secret value: $SECRET_VALUE"
           echo "$SECRET_VALUE" | jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' > .env
           echo "✅ Secrets saved to .env"
 
